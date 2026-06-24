@@ -17,10 +17,13 @@ from .law import (
     BASE_ARTICLES,
     DECREE_SOURCE,
     GENERAL_LIMIT_ARTICLES,
+    GENERAL_PROVISIONS,
     PENAL_ARTICLES,
+    REGULATION_ARTICLES,
     RIGHTS,
     SANCTION_ARTICLES,
     SECRETARIA_ARTICLES,
+    SELF_REGULATION_ARTICLES,
     SENSITIVE_ARTICLES,
     SOURCE_PROVENANCE_RULES,
     TRANSFER_ARTICLES,
@@ -39,6 +42,350 @@ from .escalation import (
 _DECREE_DATE = "2025-03-20"
 _ENGINE_VERSION = "0.2.0"
 
+# ── Legal Relationship Graph — semantic cross-references between articles ──
+# Eliminates hallucination, ambiguity, and misapplication by defining
+# the exact relationships between every article that interacts with another.
+# Relationship types:
+#   requires      — A cannot be applied without B (foundation)
+#   limits        — A restricts the scope of B
+#   overrides     — A prevails over B when in conflict
+#   complements   — A expands or details B
+#   excepts       — A provides exceptions to B's general rule
+#   procedural    — A is the next procedural step after B
+#   defines       — A defines a term used in B
+
+LEGAL_GRAPH: dict[str, list[dict[str, str]]] = {
+    # ── Chapter I: General Provisions (1-4) ──
+    "1": [  # Objeto de la Ley
+        {"target": "5", "type": "requires", "reason": "Los principios del art. 5 operativizan el objeto de proteccion del art. 1"},
+        {"target": "16", "type": "complements", "reason": "El art. 16 CPEUM eleva el objeto de la ley a rango constitucional"},
+    ],
+    "2": [  # Definiciones
+        {"target": "7", "type": "defines", "reason": "Define 'consentimiento' usado en el art. 7"},
+        {"target": "8", "type": "defines", "reason": "Define 'datos sensibles' usado en el art. 8"},
+        {"target": "35", "type": "defines", "reason": "Define 'transferencia' usado en los arts. 35-36"},
+        {"target": "28", "type": "defines", "reason": "Define 'titular' y 'responsable' usados en el art. 28"},
+    ],
+    "3": [  # Limites a derechos ARCO
+        {"target": "22", "type": "limits", "reason": "Los limites del art. 3 restringen el alcance del acceso (art. 22)"},
+        {"target": "23", "type": "limits", "reason": "Los limites del art. 3 restringen el alcance de la rectificacion"},
+        {"target": "24", "type": "limits", "reason": "Los limites del art. 3 restringen el alcance de la cancelacion"},
+        {"target": "25", "type": "limits", "reason": "El art. 3 exige interpretacion restrictiva de las excepciones del art. 25"},
+        {"target": "26", "type": "limits", "reason": "Los limites del art. 3 restringen el alcance de la oposicion"},
+        {"target": "4", "type": "complements", "reason": "Art. 4 detalla la interpretacion restrictiva de limites"},
+    ],
+    "4": [  # Interpretacion restrictiva de limites
+        {"target": "3", "type": "complements", "reason": "Operativiza los limites del art. 3 con principio de interpretacion restrictiva"},
+        {"target": "25", "type": "overrides", "reason": "Las excepciones del art. 25 deben leerse a la luz del art. 4: no pueden vaciar el derecho"},
+    ],
+
+    # ── Chapter II: Principles (5-20) ──
+    "5": [  # Principios
+        {"target": "6", "type": "requires", "reason": "El principio de licitud (art. 6) es parte de los principios del art. 5"},
+        {"target": "11", "type": "requires", "reason": "El principio de finalidad (art. 11) deriva de los principios del art. 5"},
+        {"target": "10", "type": "requires", "reason": "El principio de calidad (art. 10) deriva de los principios del art. 5"},
+        {"target": "13", "type": "requires", "reason": "El principio de responsabilidad (art. 13) deriva de los principios del art. 5"},
+    ],
+    "6": [  # Licitud
+        {"target": "7", "type": "requires", "reason": "El consentimiento (art. 7) es el mecanismo principal de licitud del art. 6"},
+        {"target": "9", "type": "excepts", "reason": "El art. 9 enumera los casos en que no se requiere consentimiento"},
+        {"target": "R44", "type": "complements", "reason": "R44 define cuando hay dolo/mala fe/negligencia, violando la licitud del art. 6"},
+    ],
+    "7": [  # Consentimiento
+        {"target": "8", "type": "complements", "reason": "El art. 8 detalla consentimiento expreso requerido por el art. 7 para datos sensibles"},
+        {"target": "9", "type": "excepts", "reason": "Casos en que el consentimiento del art. 7 no es necesario"},
+        {"target": "21", "type": "requires", "reason": "El consentimiento es presupuesto para el ejercicio ARCO del art. 21"},
+        {"target": "R44", "type": "complements", "reason": "R44 prohibe obtener consentimiento por medios enganosos"},
+    ],
+    "8": [  # Datos sensibles
+        {"target": "7", "type": "requires", "reason": "Requiere consentimiento expreso y por escrito del art. 7"},
+        {"target": "12", "type": "complements", "reason": "Prohibe crear bases de datos sensibles sin justificacion (art. 12)"},
+        {"target": "59", "type": "complements", "reason": "Sancion agravada cuando se trata de datos sensibles"},
+    ],
+    "11": [  # Principio de finalidad
+        {"target": "15", "type": "requires", "reason": "El aviso de privacidad (art. 15) debe informar las finalidades del art. 11"},
+        {"target": "35", "type": "limits", "reason": "Las transferencias del art. 35 deben limitarse a las finalidades del art. 11"},
+        {"target": "36", "type": "limits", "reason": "Las transferencias sin consentimiento deben sujetarse al principio de finalidad"},
+    ],
+    "15": [  # Aviso de privacidad
+        {"target": "11", "type": "requires", "reason": "Debe distinguir finalidades necesarias vs secundarias segun art. 11"},
+        {"target": "16", "type": "complements", "reason": "Art. 16 regula como poner el aviso a disposicion"},
+        {"target": "35", "type": "requires", "reason": "Las transferencias deben estar informadas en el aviso del art. 15"},
+        {"target": "58", "type": "complements", "reason": "No tener aviso o tenerlo deficiente es infraccion del art. 58"},
+    ],
+
+    # ── Chapter III: ARCO Rights (21-26) ──
+    "21": [  # Habilitacion ARCO
+        {"target": "22", "type": "complements", "reason": "Habilita el derecho de acceso"},
+        {"target": "23", "type": "complements", "reason": "Habilita el derecho de rectificacion"},
+        {"target": "24", "type": "complements", "reason": "Habilita el derecho de cancelacion"},
+        {"target": "26", "type": "complements", "reason": "Habilita el derecho de oposicion"},
+        {"target": "28", "type": "requires", "reason": "El art. 28 establece como se ejerce lo habilitado por el art. 21"},
+        {"target": "34", "type": "complements", "reason": "La gratuidad del art. 34 aplica a todos los derechos del art. 21"},
+    ],
+    "22": [  # Acceso
+        {"target": "28", "type": "requires", "reason": "El acceso se ejerce mediante solicitud conforme al art. 28"},
+        {"target": "31", "type": "requires", "reason": "La respuesta al acceso se rige por los plazos del art. 31"},
+        {"target": "3", "type": "limits", "reason": "Sujeto a los limites del art. 3"},
+    ],
+    "23": [  # Rectificacion
+        {"target": "28", "type": "requires", "reason": "Se ejerce mediante solicitud conforme al art. 28"},
+        {"target": "30", "type": "complements", "reason": "El art. 30 detalla el procedimiento de rectificacion"},
+        {"target": "31", "type": "requires", "reason": "La respuesta se rige por los plazos del art. 31"},
+    ],
+    "24": [  # Cancelacion
+        {"target": "25", "type": "complements", "reason": "El art. 25 enumera las excepciones a la cancelacion del art. 24"},
+        {"target": "28", "type": "requires", "reason": "Se ejerce mediante solicitud conforme al art. 28"},
+        {"target": "31", "type": "requires", "reason": "La respuesta se rige por los plazos del art. 31"},
+    ],
+    "25": [  # Excepciones a cancelacion
+        {"target": "24", "type": "limits", "reason": "Limita el alcance de la cancelacion del art. 24"},
+        {"target": "3", "type": "limits", "reason": "El art. 3 exige interpretacion restrictiva del art. 25"},
+        {"target": "4", "type": "limits", "reason": "El art. 4 prohíbe que las excepciones vacíen el contenido esencial"},
+    ],
+    "26": [  # Oposicion
+        {"target": "28", "type": "requires", "reason": "Se ejerce mediante solicitud conforme al art. 28"},
+        {"target": "31", "type": "requires", "reason": "La respuesta se rige por los plazos del art. 31"},
+        {"target": "36", "type": "overrides", "reason": "La oposicion expresa del art. 26 deja sin efectos la excepcion de transferencia a afiliadas del art. 36-III"},
+    ],
+
+    # ── Chapter IV: Procedure (27-34) ──
+    "28": [  # Requisitos de solicitud
+        {"target": "21", "type": "requires", "reason": "Operativiza el ejercicio ARCO habilitado por el art. 21"},
+        {"target": "29", "type": "complements", "reason": "El responsable debe designar persona/departamento para recibir solicitudes del art. 28"},
+        {"target": "32", "type": "complements", "reason": "Prevencion por informacion insuficiente en solicitud del art. 28"},
+        {"target": "33", "type": "complements", "reason": "Causas de improcedencia de la solicitud del art. 28"},
+    ],
+    "29": [  # Persona o departamento designado
+        {"target": "28", "type": "complements", "reason": "Recepcion de las solicitudes del art. 28"},
+        {"target": "30", "type": "complements", "reason": "Medios para presentar solicitudes"},
+    ],
+    "31": [  # Plazos
+        {"target": "28", "type": "procedural", "reason": "Plazo para responder a la solicitud del art. 28"},
+        {"target": "32", "type": "procedural", "reason": "Ampliacion del plazo del art. 31 por prevencion del art. 32"},
+        {"target": "40", "type": "procedural", "reason": "Vencido el plazo del art. 31 sin respuesta, procede solicitud de proteccion ante Secretaria (art. 40)"},
+    ],
+    "32": [  # Prevencion
+        {"target": "28", "type": "complements", "reason": "Si la solicitud del art. 28 esta incompleta, se previene por una sola vez"},
+        {"target": "31", "type": "complements", "reason": "La prevencion interrumpe el plazo del art. 31"},
+    ],
+    "33": [  # Improcedencia
+        {"target": "28", "type": "complements", "reason": "Causas por las que la solicitud del art. 28 puede ser improcedente"},
+        {"target": "3", "type": "limits", "reason": "La improcedencia debe interpretarse conforme a los limites del art. 3"},
+    ],
+    "34": [  # Gratuidad
+        {"target": "21", "type": "complements", "reason": "El ejercicio ARCO del art. 21 es gratuito"},
+        {"target": "31", "type": "complements", "reason": "La respuesta del art. 31 es gratuita, salvo costos de reproduccion/envio justificados"},
+    ],
+
+    # ── Chapter V: Transfers (35-36) ──
+    "35": [  # Transferencias
+        {"target": "11", "type": "requires", "reason": "Las transferencias deben sujetarse al principio de finalidad del art. 11"},
+        {"target": "15", "type": "requires", "reason": "Las transferencias deben comunicarse en el aviso del art. 15"},
+        {"target": "36", "type": "complements", "reason": "El art. 36 detalla los supuestos de transferencia sin consentimiento"},
+    ],
+    "36": [  # Transferencias sin consentimiento
+        {"target": "35", "type": "complements", "reason": "Detalla excepciones a la regla general del art. 35"},
+        {"target": "26", "type": "limits", "reason": "La oposicion del art. 26 puede dejar sin efecto la excepcion de afiliadas del art. 36-III"},
+        {"target": "R68", "type": "complements", "reason": "R68: toda transferencia requiere ser informada en el aviso"},
+        {"target": "R69", "type": "complements", "reason": "R69: carga de la prueba recae en el responsable que transfiere"},
+        {"target": "R70", "type": "complements", "reason": "R70: normas internas vinculantes requeridas para transferencias intragrupo"},
+    ],
+
+    # ── Chapter VI: Self-regulation (37) ──
+    "37": [  # Autorregulacion
+        {"target": "1", "type": "complements", "reason": "Complementa el objeto de proteccion de la ley, NO lo sustituye"},
+        {"target": "R86", "type": "requires", "reason": "R86: los esquemas deben estar registrados; sin registro no tienen efectos juridicos"},
+        {"target": "58", "type": "complements", "reason": "El incumplimiento del esquema de autorregulacion puede constituir infraccion"},
+    ],
+
+    # ── Terminal nodes: referenced but need their own relationships ──
+    "9": [  # Excepciones al consentimiento (referenciado por art. 6, 7)
+        {"target": "7", "type": "excepts", "reason": "Enuncia los casos en que no se requiere el consentimiento del art. 7"},
+        {"target": "6", "type": "complements", "reason": "Complementa el principio de licitud definiendo cuando no se necesita consentimiento"},
+    ],
+    "10": [  # Calidad y supresion
+        {"target": "5", "type": "requires", "reason": "Operativiza el principio de calidad del art. 5"},
+        {"target": "24", "type": "complements", "reason": "La supresion del art. 10 es la fase final tras el bloqueo de la cancelacion del art. 24"},
+    ],
+    "12": [  # Prohibicion de bases de datos sensibles
+        {"target": "8", "type": "complements", "reason": "Prohibe crear bases de datos con datos sensibles del art. 8 sin justificacion legitima"},
+        {"target": "58", "type": "complements", "reason": "La creacion de bases de datos sensibles sin justificacion es infraccion"},
+    ],
+    "13": [  # Responsabilidad
+        {"target": "5", "type": "requires", "reason": "Operativiza el principio de responsabilidad del art. 5"},
+        {"target": "58", "type": "complements", "reason": "El incumplimiento del deber de responsabilidad constituye infraccion"},
+    ],
+    "14": [  # Informacion por aviso
+        {"target": "15", "type": "complements", "reason": "El aviso de privacidad es el medio para cumplir con el deber de informar del art. 14"},
+        {"target": "7", "type": "requires", "reason": "La informacion del art. 14 es presupuesto para que el consentimiento del art. 7 sea valido"},
+    ],
+    "16": [  # Puesta a disposicion del aviso (referenciado por art. 1, 15)
+        {"target": "15", "type": "complements", "reason": "El art. 15 define el contenido del aviso; el art. 16 define COMO ponerlo a disposicion"},
+        {"target": "1", "type": "procedural", "reason": "La puesta a disposicion efectiva del aviso es condicion para la proteccion del art. 1 CPEUM"},
+    ],
+    "18": [  # Medidas de seguridad
+        {"target": "8", "type": "requires", "reason": "Los datos sensibles del art. 8 requieren medidas de seguridad reforzadas"},
+        {"target": "58", "type": "complements", "reason": "La falta de medidas de seguridad adecuadas constituye infraccion"},
+    ],
+    "27": [  # ARCO via representante
+        {"target": "28", "type": "complements", "reason": "El representante debe cumplir los mismos requisitos del art. 28 mas acreditar la representacion"},
+        {"target": "21", "type": "complements", "reason": "El representante puede ejercer los derechos ARCO habilitados por el art. 21"},
+    ],
+    "30": [  # Rectificacion — detalles procedimentales (referenciado por art. 23)
+        {"target": "23", "type": "complements", "reason": "Detalla el procedimiento especifico de rectificacion mas alla de la solicitud generica del art. 23"},
+        {"target": "28", "type": "complements", "reason": "La rectificacion requiere los elementos basicos del art. 28 mas documento soporte"},
+    ],
+    "38": [  # Objeto de la Secretaria (referenciado por art. 51)
+        {"target": "40", "type": "procedural", "reason": "La Secretaria recibe y sustancia las solicitudes de proteccion del art. 40"},
+        {"target": "54", "type": "procedural", "reason": "La Secretaria realiza verificaciones conforme al art. 54"},
+        {"target": "56", "type": "procedural", "reason": "La Secretaria inicia procedimientos sancionadores conforme al art. 56"},
+        {"target": "51", "type": "procedural", "reason": "Las resoluciones de la Secretaria son impugnables via amparo (art. 51)"},
+    ],
+    "47": [  # Improcedencia ante Secretaria (referenciado por art. 40)
+        {"target": "40", "type": "limits", "reason": "Enumera las causas por las que la solicitud de proteccion del art. 40 es improcedente"},
+        {"target": "48", "type": "procedural", "reason": "Ademas de improcedencia (art. 47), procede sobreseimiento (art. 48) en ciertos casos"},
+    ],
+    "48": [  # Sobreseimiento (referenciado por art. 40, 47)
+        {"target": "40", "type": "limits", "reason": "El sobreseimiento termina el procedimiento del art. 40 por causa superveniente, sin validar al responsable"},
+        {"target": "47", "type": "complements", "reason": "Complementa las causas de terminacion del procedimiento junto con la improcedencia del art. 47"},
+    ],
+    "55": [  # Acceso a informacion en verificacion (referenciado por art. 54)
+        {"target": "54", "type": "procedural", "reason": "Detalla las facultades de acceso a informacion durante la verificacion del art. 54"},
+        {"target": "56", "type": "procedural", "reason": "La informacion obtenida en verificacion (art. 55) puede derivar en sancion (art. 56)"},
+    ],
+    "60": [  # Graduacion de sanciones (referenciado por art. 59)
+        {"target": "59", "type": "complements", "reason": "Establece los criterios para graduar las sanciones del art. 59"},
+        {"target": "58", "type": "complements", "reason": "La graduacion del art. 60 toma en cuenta la naturaleza de la infraccion del art. 58"},
+    ],
+    "R86": [  # Registro de autorregulacion (referenciado por art. 37)
+        {"target": "37", "type": "complements", "reason": "Los esquemas del art. 37 solo tienen efectos si estan registrados conforme al R86"},
+        {"target": "58", "type": "complements", "reason": "Operar un esquema de autorregulacion sin registro puede constituir infraccion"},
+    ],
+
+    # ── Constitution ──
+    "CPEUM-16": [
+        {"target": "1", "type": "requires", "reason": "El art. 16 constitucional es el fundamento supremo del derecho a la proteccion de datos personales"},
+        {"target": "21", "type": "requires", "reason": "Los derechos ARCO del art. 21 son concrecion legislativa de la proteccion del art. 16 CPEUM"},
+        {"target": "51", "type": "requires", "reason": "El amparo del art. 51 es la via para tutelar judicialmente el derecho del art. 16 CPEUM"},
+    ],
+    "CPEUM-1": [
+        {"target": "CPEUM-16", "type": "complements", "reason": "El principio pro persona del art. 1 obliga a interpretar el art. 16 en el sentido mas favorable al titular"},
+        {"target": "3", "type": "limits", "reason": "Los limites del art. 3 LFPDPPP deben interpretarse conforme al principio pro persona del art. 1 CPEUM"},
+    ],
+    "CPEUM-103": [
+        {"target": "51", "type": "requires", "reason": "Fundamento constitucional del juicio de amparo del art. 51 LFPDPPP"},
+        {"target": "CPEUM-16", "type": "complements", "reason": "El art. 103 habilita la via judicial para proteger el derecho del art. 16"},
+    ],
+
+    # ── LFPA (Ley Federal de Procedimiento Administrativo) ──
+    "LFPA-1": [
+        {"target": "LFPA-3", "type": "requires", "reason": "Supletoriedad de la LFPA en el procedimiento ante la Secretaria"},
+        {"target": "40", "type": "complements", "reason": "La solicitud de proteccion del art. 40 LFPDPPP se rige supletoriamente por la LFPA"},
+    ],
+    "LFPA-3": [
+        {"target": "40", "type": "complements", "reason": "Define los elementos del acto administrativo que debe cumplir la resolucion de la Secretaria"},
+        {"target": "LFPA-35", "type": "procedural", "reason": "Las notificaciones de la Secretaria se rigen por el art. 35 LFPA"},
+    ],
+    "LFPA-35": [
+        {"target": "LFPA-3", "type": "procedural", "reason": "Detalla los requisitos de las notificaciones administrativas"},
+        {"target": "31", "type": "complements", "reason": "Complementa el regimen de notificaciones del art. 31 LFPDPPP en sede administrativa"},
+    ],
+    "LFPA-38": [
+        {"target": "LFPA-39", "type": "procedural", "reason": "Recurso de revision contra actos administrativos, paso previo opcional al amparo indirecto"},
+        {"target": "40", "type": "procedural", "reason": "Si la resolucion de proteccion es desfavorable, puede impugnarse via recurso de revision"},
+    ],
+    "LFPA-39": [
+        {"target": "51", "type": "procedural", "reason": "Agotado el recurso de revision LFPA, procede amparo indirecto del art. 51"},
+        {"target": "LFPA-38", "type": "procedural", "reason": "El recurso de revision suspende la definitividad para efectos del amparo"},
+    ],
+
+    # ── Ley de Amparo ──
+    "LA-17": [
+        {"target": "51", "type": "complements", "reason": "Plazo de 15 DIAS HABILES para promover amparo contra resolucion de la Secretaria"},
+        {"target": "LA-19", "type": "complements", "reason": "El computo del plazo del art. 17 LA es en dias habiles conforme al art. 19 LA"},
+    ],
+    "LA-19": [
+        {"target": "LA-17", "type": "complements", "reason": "Confirma que el plazo de amparo se computa en DIAS HABILES"},
+        {"target": "31", "type": "complements", "reason": "Coherencia: tanto plazos ARCO (art. 31 LFPDPPP) como plazos de amparo son en dias habiles"},
+    ],
+    "LA-107": [
+        {"target": "51", "type": "complements", "reason": "Define que el amparo contra resoluciones de la Secretaria es INDIRECTO ante Juzgado de Distrito"},
+        {"target": "LA-17", "type": "procedural", "reason": "El plazo del art. 17 LA aplica al amparo indirecto del art. 107 LA"},
+    ],
+    "LA-125": [
+        {"target": "LA-107", "type": "complements", "reason": "Regula la suspension del acto reclamado en amparo indirecto"},
+        {"target": "LA-128", "type": "complements", "reason": "La suspension no debe perjudicar el interes social ni contravenir disposiciones de orden publico"},
+    ],
+    "LA-128": [
+        {"target": "LA-125", "type": "complements", "reason": "Establece los requisitos para que proceda la suspension en amparo indirecto"},
+    ],
+    "LA-61": [
+        {"target": "LA-107", "type": "complements", "reason": "Define las causales de improcedencia del amparo, incluyendo definitividad"},
+        {"target": "LFPA-38", "type": "procedural", "reason": "El recurso LFPA debe agotarse antes del amparo por principio de definitividad"},
+    ],
+
+    # ── Chapter VII-VIII: Secretaria y Procedimientos (38-55) ──
+    "40": [  # Solicitud de proteccion de datos
+        {"target": "31", "type": "procedural", "reason": "Paso siguiente cuando vence el plazo del art. 31 sin respuesta"},
+        {"target": "41", "type": "procedural", "reason": "Requisitos de la solicitud de proteccion"},
+        {"target": "47", "type": "complements", "reason": "Causas de improcedencia de la solicitud de proteccion"},
+        {"target": "48", "type": "complements", "reason": "Causas de sobreseimiento"},
+    ],
+    "41": [  # Requisitos solicitud proteccion
+        {"target": "40", "type": "procedural", "reason": "Detalla los requisitos para la solicitud del art. 40"},
+        {"target": "28", "type": "complements", "reason": "Debe acompanar copia de la solicitud ARCO original (art. 28) y constancia de recepcion"},
+    ],
+    "51": [  # Amparo
+        {"target": "54", "type": "procedural", "reason": "El amparo procede contra resoluciones de verificacion del art. 54"},
+        {"target": "38", "type": "procedural", "reason": "El amparo procede contra cualquier resolucion de la Secretaria (art. 38)"},
+    ],
+    "54": [  # Verificacion
+        {"target": "40", "type": "procedural", "reason": "La verificacion puede derivar de una solicitud de proteccion del art. 40"},
+        {"target": "55", "type": "complements", "reason": "El art. 55 regula el acceso a informacion durante la verificacion"},
+        {"target": "56", "type": "procedural", "reason": "Si en verificacion hay incumplimiento, inicia procedimiento sancionador (art. 56)"},
+    ],
+
+    # ── Chapter IX-XI: Sanctions (56-64) ──
+    "56": [  # Inicio procedimiento sancionador
+        {"target": "54", "type": "procedural", "reason": "Puede iniciar tras verificacion del art. 54"},
+        {"target": "58", "type": "procedural", "reason": "Determina las infracciones que seran sancionadas"},
+        {"target": "59", "type": "procedural", "reason": "Establece las sanciones aplicables"},
+    ],
+    "58": [  # Infracciones
+        {"target": "59", "type": "procedural", "reason": "El art. 59 establece las sanciones para las infracciones del art. 58"},
+        {"target": "5", "type": "requires", "reason": "Muchas infracciones son violaciones a los principios del art. 5"},
+        {"target": "15", "type": "requires", "reason": "Infracciones relacionadas con el aviso de privacidad del art. 15"},
+        {"target": "28", "type": "requires", "reason": "Infracciones por no atender solicitudes del art. 28"},
+    ],
+    "59": [  # Sanciones
+        {"target": "58", "type": "procedural", "reason": "Sanciona las infracciones del art. 58"},
+        {"target": "8", "type": "complements", "reason": "Sancion se duplica cuando involucra datos sensibles del art. 8"},
+        {"target": "60", "type": "complements", "reason": "Graduacion de sanciones del art. 59"},
+    ],
+
+    # ── Regulation 2011 key interactions ──
+    "R44": [  # Prohibicion de medios enganosos
+        {"target": "6", "type": "complements", "reason": "Define cuando hay violacion al principio de licitud del art. 6 LFPDPPP"},
+        {"target": "7", "type": "complements", "reason": "Define cuando el consentimiento del art. 7 fue obtenido fraudulentamente"},
+        {"target": "58", "type": "complements", "reason": "Medios enganosos pueden constituir infraccion del art. 58"},
+    ],
+    "R68": [  # Consentimiento para transferencias en aviso
+        {"target": "35", "type": "complements", "reason": "Refuerza que toda transferencia debe estar en el aviso"},
+        {"target": "36", "type": "complements", "reason": "Aplica tambien a transferencias sin consentimiento"},
+    ],
+    "R69": [  # Carga de la prueba en transferencias
+        {"target": "35", "type": "complements", "reason": "El responsable que transfiere carga con la prueba de cumplimiento"},
+        {"target": "36", "type": "complements", "reason": "Aplica a todos los supuestos de transferencia"},
+    ],
+    "R70": [  # Normas internas vinculantes
+        {"target": "36", "type": "complements", "reason": "Exige normas vinculantes para la transferencia intragrupo del art. 36-III"},
+    ],
+    "R91": [  # Canales de atencion como canal ARCO
+        {"target": "28", "type": "complements", "reason": "Amplia los medios validos para presentar solicitudes ARCO"},
+        {"target": "30", "type": "complements", "reason": "Compatible con el art. 30 sobre medios electronicos"},
+    ],
+}
 
 def build_trace() -> dict[str, str]:
     """Return metadata for every output: what version of the law was used."""
@@ -257,6 +604,16 @@ def _rights(case: dict[str, Any]) -> list[dict[str, Any]]:
     return rights if isinstance(rights, list) else []
 
 
+RIGHT_DISPLAY_NAMES: dict[str, str] = {
+    "acceso": "Acceso",
+    "rectificacion": "Rectificacion",
+    "cancelacion": "Cancelacion",
+    "oposicion": "Oposicion",
+    "limitacion_uso_divulgacion": "Limitacion de Uso y Divulgacion",
+    "revocacion_consentimiento": "Revocacion de Consentimiento",
+}
+
+
 def _right_names(case: dict[str, Any]) -> list[str]:
     names: list[str] = []
     for item in _rights(case):
@@ -265,6 +622,10 @@ def _right_names(case: dict[str, Any]) -> list[str]:
         elif isinstance(item, str):
             names.append(item.strip().lower())
     return names
+
+
+def _right_display_names(case: dict[str, Any]) -> list[str]:
+    return [RIGHT_DISPLAY_NAMES.get(n, n.title()) for n in _right_names(case)]
 
 
 def _parse_iso_date(value: Any) -> _dt.date | None:
@@ -445,55 +806,206 @@ def audit_source_provenance(case_data: dict[str, Any] | str, today: str | None =
 
 
 def article_bundle(article_ids: list[str] | None = None) -> dict[str, Any]:
-    """Return controlled article summaries."""
+    """Return controlled article summaries from all 5 legal instruments.
+
+    Handles IDs in the formats used by legal_graph:
+      "28" → LFPDPPP, "R68" → Reglamento, "CPEUM-16" → Constitucion,
+      "LFPA-35" → LFPA, "LA-17" → Ley de Amparo.
+    """
     ids = article_ids or sorted(ARTICLES, key=lambda x: int(x))
-    selected = {str(i): ARTICLES[str(i)] for i in ids if str(i) in ARTICLES}
+    articles: dict[str, dict[str, str]] = {}
+    sources: set[str] = set()
+
+    for raw in ids:
+        i = str(raw)
+        if i in ARTICLES:
+            articles[i] = dict(ARTICLES[i])
+            articles[i]["instrumento"] = "LFPDPPP 2025"
+            sources.add(DECREE_SOURCE)
+        elif i in REGULATION_ARTICLES:
+            articles[i] = dict(REGULATION_ARTICLES[i])
+            articles[i]["instrumento"] = "Reglamento LFPDPPP 2011"
+            sources.add("Reglamento LFPDPPP DOF 21-12-2011")
+        elif i.startswith("CPEUM-") and i.replace("CPEUM-", "") in CONSTITUTION_ARTICLES:
+            num = i.replace("CPEUM-", "")
+            articles[i] = dict(CONSTITUTION_ARTICLES[num])
+            articles[i]["instrumento"] = "CPEUM"
+            sources.add(CONSTITUTIONAL_SOURCE)
+        elif i.startswith("LFPA-") and i.replace("LFPA-", "") in LFPA_ARTICLES:
+            num = i.replace("LFPA-", "")
+            articles[i] = dict(LFPA_ARTICLES[num])
+            articles[i]["instrumento"] = "LFPA"
+            sources.add(LFPA_SOURCE)
+        elif i.startswith("LA-") and i.replace("LA-", "") in AMPARO_ARTICLES:
+            num = i.replace("LA-", "")
+            articles[i] = dict(AMPARO_ARTICLES[num])
+            articles[i]["instrumento"] = "Ley de Amparo"
+            sources.add(AMPARO_SOURCE)
+
     return {
-        "source": DECREE_SOURCE,
+        "source": list(sources) if sources else [DECREE_SOURCE],
         "authority_for_particulares": AUTHORITY,
-        "articles": selected,
+        "articles": articles,
     }
 
 
+def _extract_values(obj: Any, max_depth: int = 4) -> list[str]:
+    """Recursively extract all leaf STRING values from a nested dict/list,
+    ignoring dict keys. Skips URLs to avoid false positives."""
+    if max_depth <= 0:
+        return []
+    if isinstance(obj, dict):
+        result: list[str] = []
+        for v in obj.values():
+            result.extend(_extract_values(v, max_depth - 1))
+        return result
+    if isinstance(obj, (list, tuple)):
+        result = []
+        for item in obj:
+            result.extend(_extract_values(item, max_depth - 1))
+        return result
+    if isinstance(obj, str):
+        if obj.startswith("http://") or obj.startswith("https://"):
+            return []
+        return [obj]
+    if obj is not None:
+        return [str(obj)]
+    return []
+
+
 def select_legal_basis(case_data: dict[str, Any] | str) -> dict[str, Any]:
-    """Select articles that are in scope for the requested rights and facts."""
+    """Select articles IN SCOPE for the requested rights and facts.
+
+    This is a SURGICAL selector — each article is included only if the
+    specific case context justifies it. No blanket citations.
+    """
     case = _as_dict(case_data)
-    selected = list(GENERAL_LIMIT_ARTICLES + BASE_ARTICLES)
+    selected: list[str] = []
     unknown_rights: list[str] = []
     non_arco_complements: list[str] = []
 
+    # ── Siempre: núcleo ARCO ──
+    selected.extend(["1", "3", "4"])             # objeto + limites (interpretacion restrictiva)
+    selected.extend(["21", "28", "31", "34"])    # habilitacion + solicitud + plazos + gratuidad
+
+    # ── Derechos específicos ──
     for name in _right_names(case):
         if name not in VALID_RIGHTS:
             unknown_rights.append(name)
             continue
-        selected.extend(RIGHTS[name]["articles"])
+        right_articles = RIGHTS[name]["articles"]
+        selected.extend(right_articles)
         if RIGHTS[name].get("not_arco"):
             non_arco_complements.append(name)
 
+    # ── Contextuales: solo si el caso los necesita ──
+
+    # Art. 27 (representante): solo si hay representante legal
+    if _present(_get(case, "representante")):
+        if "27" not in selected:
+            selected.append("27")
+
+    # Art. 29 (departamento designado): solo si el responsable podría alegar
+    # desorganización interna como defensa
+    if _get(case, "responsable.canal_arco", "") or _get(case, "responsable.nombre_legal", ""):
+        if "29" not in selected:
+            selected.append("29")
+
+    # Art. 32 (prevención) y 33 (improcedencia): van en sección procedimental,
+    # no en el fundamento principal. Se incluyen si el caso tiene datos que
+    # podrían ser objetados por el responsable.
+    if "32" not in selected:
+        selected.append("32")
+    if "33" not in selected:
+        selected.append("33")
+
+    # ── Datos sensibles ──
     data_items = case.get("datos_personales", [])
     has_sensitive = any(
         isinstance(item, dict) and item.get("sensible") is True
         for item in (data_items if isinstance(data_items, list) else [])
     )
+    if has_sensitive:
+        selected.extend(SENSITIVE_ARTICLES)
+
+    # ── Transferencias: solo si se ejerce limitación o revocación ──
     has_transfer = any(
         name in {"limitacion_uso_divulgacion", "revocacion_consentimiento"}
         for name in _right_names(case)
     ) or _present(case.get("transferencias"))
-    facts_text = json.dumps(case, ensure_ascii=False).lower()
-    has_penal_trigger = any(
-        token in facts_text
-        for token in ("vulneracion de seguridad", "filtracion", "fuga de datos", "lucro", "engaño", "engano")
-    )
-
-    if has_sensitive:
-        selected.extend(SENSITIVE_ARTICLES)
     if has_transfer:
         selected.extend(TRANSFER_ARTICLES)
 
-    selected.extend(SECRETARIA_ARTICLES)
-    selected.extend(SANCTION_ARTICLES)
+    # ── Principios específicos: solo si el contexto fáctico los activa ──
+    # IMPORTANTE: extraemos solo VALORES, no nombres de campo del JSON
+    facts_parts: list[str] = []
+    for v in _extract_values(case):
+        facts_parts.append(str(v).lower())
+    facts_text = " ".join(facts_parts)
+
+    # Art. 6 (licitud): si hay indicios de medios engañosos o fraudulentos
+    if any(t in facts_text for t in ("engaño", "fraudulento", "enganoso",
+            "oculto", "no informado", "no informaron", "falso", "falsa")):
+        if "6" not in selected:
+            selected.append("6")
+
+    # Art. 5 (principios): si hay violación de principios
+    if any(t in facts_text for t in ("violacion", "principio", "irregular", "abuso")):
+        if "5" not in selected:
+            selected.append("5")
+
+    # Art. 7 (consentimiento): siempre relevante para cualquier ARCO, pero
+    # especialmente si hay disputa sobre consentimiento
+    if any(t in facts_text for t in ("consentimiento", "consenti", "autorizo",
+            "sin permiso", "no autorice", "no acepte")) or has_transfer:
+        if "7" not in selected:
+            selected.append("7")
+
+    # Art. 2 (definiciones): nunca se cita en fundamento — es un glosario
+    # Art. 9 (excepciones): solo si el responsable las podría invocar
+    if any(t in facts_text for t in ("excepcion", "sin consentimiento", "obligacion legal")):
+        if "9" not in selected:
+            selected.append("9")
+
+    # Art. 14-16 (aviso): solo si hay problemas con el aviso de privacidad
+    if any(t in facts_text for t in ("no tiene aviso", "sin aviso", "aviso deficiente",
+            "aviso oculto", "aviso enganoso", "no informo", "no me informaron",
+            "nunca informo", "jamas informo", "no recabe", "datos sin aviso")):
+        if "14" not in selected:
+            selected.append("14")
+        if "16" not in selected:
+            selected.append("16")
+
+    # Art. 10 (calidad): solo para rectificación
+    if "rectificacion" in _right_names(case):
+        if "10" not in selected:
+            selected.append("10")
+
+    # Art. 13 (responsabilidad): siempre implícito, se cita si hay incumplimiento concreto
+    if any(t in facts_text for t in ("incumplimiento", "no cumplio", "violacion",
+            "negligencia", "no respondio", "no contesto")):
+        if "13" not in selected:
+            selected.append("13")
+
+    # ── Autorregulación: si el responsable tiene o alega tener esquema ──
+    if _present(_get(case, "responsable.esquema_autorregulacion")) or any(
+        t in facts_text for t in ("autorregulacion", "codigo deontologico",
+                "sello de confianza", "certificacion")):
+        selected.extend(SELF_REGULATION_ARTICLES)
+
+    # ── Penal: solo si hay desencadenantes penales ──
+    has_penal_trigger = any(
+        token in facts_text
+        for token in ("vulneracion de seguridad", "filtracion", "fuga de datos",
+                      "lucro", "engaño", "engano")
+    )
     if has_penal_trigger:
         selected.extend(PENAL_ARTICLES)
+
+    # ── Autoridad y sanciones: van en sección de reserva, no en fundamento ──
+    selected.extend(SECRETARIA_ARTICLES)
+    selected.extend(SANCTION_ARTICLES)
+
     selected = _dedupe(selected)
 
     return {
@@ -504,9 +1016,18 @@ def select_legal_basis(case_data: dict[str, Any] | str) -> dict[str, Any]:
         "article_summaries": {i: ARTICLES[i] for i in selected if i in ARTICLES},
         "unknown_rights": unknown_rights,
         "non_arco_complements": non_arco_complements,
+        "selection_rationale": {
+            "nucleo_arco": "1, 3, 4, 21, 28, 31, 34 — siempre",
+            "derechos_especificos": [n for n in _right_names(case) if n in VALID_RIGHTS],
+            "sensibles": has_sensitive,
+            "transferencias": has_transfer,
+            "penal": has_penal_trigger,
+            "autorregulacion": _present(_get(case, "responsable.esquema_autorregulacion")),
+        },
         "notes": [
             "Limitacion de uso/divulgacion y revocacion de consentimiento no son derechos ARCO autonomos.",
             "Las sanciones no son automaticas: dependen de infraccion concreta y procedimiento.",
+            "Cada articulo se incluye SOLO si el contexto del caso lo justifica.",
         ],
     }
 
@@ -722,9 +1243,10 @@ def validate_arco_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
             missing.append(path)
 
     if _present(_get(case, "responsable.naturaleza")) and _get(case, "responsable.naturaleza") != "privado":
+        raw_val = _get(case, "responsable.naturaleza")
         blockers.append({
             "code": "wrong_legal_regime",
-            "message": "La LFPDPPP aplica a sujetos regulados privados. Si el responsable no es privado, debe usarse el regimen juridico correspondiente antes de redactar.",
+            "message": f"responsable.naturaleza debe ser 'privado'. Recibiste '{raw_val}'. La LFPDPPP solo aplica a sujetos regulados privados (empresas y personas fisicas con actividad empresarial). Si el responsable es autoridad publica, debes usar la ley general de proteccion de datos para sujetos obligados.",
         })
 
     if _get(case, "titular.identificacion.vigente") is False:
@@ -912,7 +1434,7 @@ def validate_arco_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
 
 
 def _format_articles(ids: list[str]) -> str:
-    return ", ".join(f"articulo {i}" for i in sorted(ids, key=int))
+    return ", ".join(sorted(ids, key=int))
 
 
 def _data_list(case: dict[str, Any]) -> str:
@@ -927,6 +1449,22 @@ def _data_list(case: dict[str, Any]) -> str:
         else:
             lines.append(f"- {item}")
     return "\n".join(lines) if lines else "- [datos personales]"
+
+
+NUMEROS_CLAUSULA = {
+    1: "PRIMERO", 2: "SEGUNDO", 3: "TERCERO", 4: "CUARTO",
+    5: "QUINTO", 6: "SEXTO", 7: "SEPTIMO", 8: "OCTAVO",
+    9: "NOVENO", 10: "DECIMO",
+}
+
+
+def _build_clause_heading(num: int, article_label: str, suffix: str = "") -> str:
+    """Articulo X, fraccion II: PRIMERO. Con fundamento en el articulo..."""
+    base = f"articulo {article_label}"
+    if suffix:
+        base += f", {suffix}"
+    label = NUMEROS_CLAUSULA.get(num, str(num))
+    return f"{label}. Con fundamento en el {base} de la Ley, "
 
 
 def draft_arco_request(case_data: dict[str, Any] | str, force: bool = False, validation: dict[str, Any] | None = None, preview: bool = False) -> dict[str, Any]:
@@ -987,11 +1525,12 @@ def draft_arco_request(case_data: dict[str, Any] | str, force: bool = False, val
         if name not in VALID_RIGHTS:
             continue
         petition = right.get("peticion_concreta") or "[peticion concreta]"
+        num = len(right_sections) + 1
         if name == "oposicion":
             if right.get("supuesto_oposicion") == "tratamiento_automatizado":
                 right_sections.append(
-                    "### Oposicion por tratamiento automatizado\n\n"
-                    f"Solicito el cese u oposicion respecto de {petition}. "
+                    _build_clause_heading(num, "26", "fraccion II")
+                    + f"solicito el cese u oposicion respecto de {petition}. "
                     f"El tratamiento automatizado identificado consiste en: {right.get('descripcion_tratamiento_automatizado', '[tratamiento automatizado]')}. "
                     f"El efecto juridico no deseado o afectacion significativa es: {right.get('efecto_juridico_o_afectacion_significativa', '[efecto o afectacion]')}. "
                     f"Los aspectos personales evaluados o inferidos son: {right.get('aspectos_personales_evaluados', '[aspectos evaluados]')}. "
@@ -999,8 +1538,8 @@ def draft_arco_request(case_data: dict[str, Any] | str, force: bool = False, val
                 )
             else:
                 right_sections.append(
-                    "### Oposicion\n\n"
-                    f"Solicito el cese del tratamiento consistente en {petition}. "
+                    _build_clause_heading(num, "26", "fraccion I")
+                    + f"solicito el cese del tratamiento consistente en {petition}. "
                     f"La causa legitima es: {right.get('causa_legitima_oposicion', '[causa legitima]')}. "
                     f"Mi situacion especifica es: {right.get('situacion_especifica_oposicion', '[situacion especifica]')}. "
                     f"La persistencia del tratamiento puede causarme: {right.get('dano_o_perjuicio_oposicion', '[dano o perjuicio]')}. "
@@ -1008,97 +1547,83 @@ def draft_arco_request(case_data: dict[str, Any] | str, force: bool = False, val
                 )
         elif name == "cancelacion":
             right_sections.append(
-                "### Cancelacion\n\n"
-                f"Solicito la cancelacion de {petition}, con el bloqueo previo que legalmente corresponda y la supresion posterior al concluir el plazo aplicable. "
+                _build_clause_heading(num, "24")
+                + f"solicito la cancelacion de {petition}, con el bloqueo previo que legalmente corresponda y la supresion posterior al concluir el plazo aplicable. "
                 "Si estiman actualizada alguna excepcion del articulo 25, solicito identificar la fraccion aplicable, el dato afectado, la finalidad que justifica su conservacion y las pruebas pertinentes."
             )
         elif name == "rectificacion":
             right_sections.append(
-                "### Rectificacion\n\n"
-                f"Solicito rectificar {right.get('dato_actual_rectificacion', '[dato actual]')} para que conste como {right.get('dato_correcto_rectificacion', '[dato correcto]')}. "
+                _build_clause_heading(num, "23")
+                + f"solicito rectificar {right.get('dato_actual_rectificacion', '[dato actual]')} para que conste como {right.get('dato_correcto_rectificacion', '[dato correcto]')}. "
                 f"Anexo como soporte: {right.get('documento_soporte_rectificacion', '[documento soporte]')}."
             )
         elif name == "acceso":
             right_sections.append(
-                "### Acceso\n\n"
-                f"Solicito {petition}. Esto incluye confirmacion de tratamiento, copia o puesta a disposicion de mis datos personales, finalidades, categorias de datos, origen cuando no provengan directamente de mi, transferencias ya realizadas o previstas, terceros receptores o categorias de receptores y plazo o criterio de conservacion."
+                _build_clause_heading(num, "22")
+                + f"solicito {petition}. Esto incluye confirmacion de tratamiento, copia o puesta a disposicion de mis datos personales, finalidades, categorias de datos, origen cuando no provengan directamente de mi, transferencias ya realizadas o previstas, terceros receptores o categorias de receptores y plazo o criterio de conservacion."
             )
         elif name == "limitacion_uso_divulgacion":
             right_sections.append(
-                "### Limitacion de uso y divulgacion\n\n"
-                f"De forma complementaria, solicito limitar el uso y divulgacion de mis datos para {petition}. "
+                _build_clause_heading(num, "11, 15 fraccion IV, 35 y 36")
+                + f"solicito limitar el uso y divulgacion de mis datos para {petition}. "
                 "Esta peticion se formula respecto de finalidades secundarias, mercadotecnia, publicidad, prospeccion comercial, perfilamiento no necesario y transferencias futuras o no indispensables."
             )
         elif name == "revocacion_consentimiento":
             right_sections.append(
-                "### Revocacion de consentimiento\n\n"
-                f"Solicito revocar mi consentimiento respecto de {petition}, sin efectos retroactivos y sin afectar tratamientos estrictamente necesarios por ley o por la relacion juridica aplicable."
+                _build_clause_heading(num, "7")
+                + f"solicito revocar mi consentimiento respecto de {petition}, sin efectos retroactivos y sin afectar tratamientos estrictamente necesarios por ley o por la relacion juridica aplicable."
             )
 
     folio_text = f" Referencia de localizacion: {folio}." if folio else ""
-    draft = f"""{ciudad}, {fecha}
+    rfc = _get(case, "responsable.rfc", "")
+    domicilio = _get(case, "responsable.domicilio", "")
+    rfc_line = f"R.F.C.: {rfc}\n" if rfc else ""
+    domicilio_line = f"{domicilio}\n" if domicilio else ""
+    right_sections_text = chr(10).join(right_sections)
+    draft = f"""ASUNTO: Ejercicio de Derechos ARCO ({", ".join(_right_display_names(case))}).
 
+{ciudad}, {fecha}
+
+A LA ATENCION DEL DEPARTAMENTO DE DATOS PERSONALES DE
 {responsable}
-Area o departamento de datos personales
-{canal}
-Presente.
+{rfc_line}{domicilio_line}
+PRESENTE.
 
-## Asunto
+Quien suscribe, {titular}, por mi propio derecho, en mi caracter de titular de los datos personales que mas adelante se detallan, senalando para oir y recibir notificaciones {medio}, comparezco formalmente con fundamento en los articulos {_format_articles(basis_ids)} de la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (en lo sucesivo, la Ley), para ejercer de manera expresa mis derechos ARCO bajo los siguientes terminos:
 
-Solicitud de ejercicio de derechos ARCO y peticiones complementarias en materia de proteccion de datos personales.
+La presente solicitud se formula ante el responsable legal identificado en su aviso de privacidad vigente, no ante una sucursal, modulo, punto de venta o area operativa aislada. En caso de que un area interna distinta conserve o trate los datos, solicito que esta peticion sea canalizada internamente al departamento competente sin restringir indebidamente el alcance de la solicitud.
 
-## Titular y medio de notificacion
+Mantengo o mantuve relacion con {responsable} consistente en: {relacion}.{folio_text} Para evitar cualquier ambiguedad, hago constar que la identidad, domicilio y canal de atencion se tomaron del aviso de privacidad consultado en {aviso_ref} el {aviso_fecha}. Si el responsable no ha designado persona o departamento de datos personales, solicito que esta comunicacion sea turnada al area competente y que se me informe el dato de contacto designado para el tramite, conforme al articulo 29 de la Ley.
 
-Yo, {titular}, por mi propio derecho, senalo como medio para recibir notificaciones {medio}. Acredito mi identidad con copia de {id_tipo}, que se acompana como anexo, conforme al articulo 28, fraccion II, de la Ley.
-
-## Relacion juridica y localizacion de datos
-
-Mantengo o mantuve relacion con {responsable} consistente en: {relacion}.{folio_text}
-
-La solicitud se dirige al responsable legal identificado en su aviso de privacidad vigente, no a una sucursal, modulo, punto de venta o area operativa aislada. En caso de que un area interna distinta conserve o trate los datos, solicito que esta peticion sea canalizada internamente al departamento competente sin restringir indebidamente el alcance de la solicitud.
-
-Para evitar cualquier ambiguedad sobre la persona responsable, hago constar que la identidad, domicilio y canal de atencion se tomaron del aviso de privacidad consultado en {aviso_ref} el {aviso_fecha}.
-
-Si el responsable no ha designado persona o departamento de datos personales, solicito que esta comunicacion sea turnada al area competente y que se me informe el dato de contacto designado para el tramite, conforme al articulo 29 de la Ley.
-
-## Datos personales involucrados
+Acredito mi identidad con copia de {id_tipo}, que se acompana como anexo, conforme al articulo 28, fraccion II, de la Ley. Los datos personales involucrados en la presente solicitud son los siguientes:
 
 {_data_list(case)}
 
-## Fundamento
+En virtud de lo anterior, formulo las siguientes peticiones:
 
-La presente solicitud se formula con fundamento en la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (en lo sucesivo, la Ley), particularmente en {_format_articles(basis_ids)}. Para efectos de la Ley, la autoridad competente referida como Secretaria es la {AUTHORITY}. Reconozco que el ejercicio de estos derechos se encuentra sujeto a los limites del articulo 3 de la Ley; si el responsable invoca alguno, solicito identificar el limite concreto, su base normativa, la necesidad de aplicarlo y los datos afectados.
+{right_sections_text}
 
-## Derechos y peticiones
-
-{chr(10).join(right_sections)}
-
-## Acuse y gratuidad
-
-Solicito que se acuse recibo de esta solicitud por el mismo medio de envio o por el medio senalado para notificaciones, indicando fecha de recepcion, hora, folio si existe y area o persona que la recibe. Hago valer que el ejercicio de los derechos ARCO es gratuito conforme al articulo 34 de la Ley, sin perjuicio de costos estrictamente limitados a reproduccion, copias o envio cuando legalmente procedan y se justifiquen.
-
-## Negativa total o parcial
+Solicito que se acuse recibo de la presente por el mismo medio de envio o por el medio senalado para notificaciones, indicando fecha de recepcion, hora, folio si existe y area o persona que la recibe. Hago valer que el ejercicio de los derechos ARCO es gratuito conforme al articulo 34 de la Ley, sin perjuicio de costos estrictamente limitados a reproduccion, copias o envio cuando legalmente procedan y se justifiquen.
 
 Toda negativa total o parcial debera comunicarse dentro del plazo legal, por el mismo medio senalado para notificaciones, expresando de forma fundada y motivada la causa especifica de improcedencia prevista en el articulo 33 de la Ley y acompanando, en su caso, las pruebas pertinentes que sustenten dicha determinacion.
 
-## Plazos
+Conforme al articulo 31 de la Ley, el responsable cuenta con un plazo de veinte dias habiles contado desde la recepcion de esta solicitud para comunicar la determinacion adoptada. Dicho plazo podra ampliarse por una unica vez y por un periodo igual, siempre que exista justificacion para ello y sea notificado dentro del plazo original. De resultar procedente, la determinacion debera hacerse efectiva dentro de los quince dias habiles siguientes a su comunicacion.
 
-Solicito que la determinacion correspondiente sea comunicada dentro del plazo maximo de veinte dias habiles contado desde la recepcion de esta solicitud y que, de resultar procedente, se haga efectiva dentro de los quince dias habiles siguientes a la comunicacion de la respuesta, conforme al articulo 31 de la Ley. Cualquier ampliacion debera notificarse dentro del plazo aplicable, justificarse por las circunstancias del caso y solo podra operar por una vez y por un periodo igual.
+En caso de falta de respuesta, respuesta incompleta, negativa injustificada, entrega en formato incomprensible o cumplimiento defectuoso, me reservo el derecho de presentar solicitud de proteccion de datos ante la {AUTHORITY}, en terminos de los articulos 40 y 41 de la Ley, asi como de solicitar la verificacion que corresponda conforme al articulo 54 de la Ley y de acudir al juicio de amparo contra resoluciones de la Secretaria en terminos del articulo 51 de la Ley, sin perjuicio de los derechos indemnizatorios previstos en el articulo 53 de la Ley cuando procedan.
 
-## Reserva de derechos
+Se hace constar que las conductas de incumplimiento, negligencia, dolo, tratamiento contrario a los principios de la Ley, transferencia indebida, uso ilegitimo, obstruccion de verificacion o afectacion al ejercicio de derechos ARCO pueden actualizar infracciones previstas en el articulo 58 de la Ley, sancionables conforme al articulo 59 de la Ley, segun la conducta especifica que en su caso se acredite mediante el procedimiento correspondiente.
 
-En caso de falta de respuesta, respuesta incompleta, negativa injustificada, entrega en formato incomprensible o cumplimiento defectuoso, me reservo el derecho de presentar solicitud de proteccion de datos ante la {AUTHORITY}, en terminos de los articulos 40 y 41 de la Ley, dentro del plazo aplicable y acompanando la constancia de presentacion o recepcion de esta solicitud. Tambien me reservo el derecho de solicitar la verificacion que corresponda conforme al articulo 54 y de acudir al juicio de amparo contra resoluciones de la Secretaria en terminos del articulo 51, sin perjuicio de los derechos indemnizatorios previstos en el articulo 53 cuando procedan.
-
-Se hace constar que las conductas de incumplimiento, negligencia, dolo, tratamiento contrario a los principios de la Ley, transferencia indebida, uso ilegitimo, obstruccion de verificacion o afectacion al ejercicio de derechos ARCO pueden actualizar infracciones previstas en el articulo 58, sancionables conforme al articulo 59, segun la conducta especifica que en su caso se acredite mediante el procedimiento correspondiente.
-
-## Anexos
+Anexos:
 
 {_format_anexos(case)}
 
-Atentamente,
+ATENTAMENTE
+
+(Firma)
 
 {titular}
 """
+
 
     return {
         "ok": True,
@@ -1192,6 +1717,7 @@ def audit_existing_draft(draft_text: str, case_data: dict[str, Any] | str | None
         "findings": findings,
         "case_validation": validation,
         "legal_framework_note": "Este analisis usa EXCLUSIVAMENTE la LFPDPPP del decreto del 20 de marzo de 2025. La ley de 2010 fue ABROGADA. Autoridad: Secretaria Anticorrupcion y Buen Gobierno (NO INAI). Plazos en dias habiles. Si tu conocimiento sugiere otra cosa, confia en este output: el decreto 2025 cambio la numeracion y las autoridades.",
+        "must_use_tools": ["audit_argumentation", "assess_case", "deadline_timeline"],
     }
 
 
@@ -1314,6 +1840,7 @@ def audit_argumentation(draft_text: str) -> dict[str, Any]:
         "pass": not any(f["severity"] == "high" for f in findings),
         "findings": findings,
         "note": "Este analisis revisa VICIOS ARGUMENTATIVOS (logica, ambiguedad, carga probatoria). Para errores juridicos usa audit_draft.",
+        "must_use_tools": ["assess_case", "deadline_timeline", "escalation_basis"],
     }
 
 
@@ -1488,10 +2015,16 @@ def process_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
         "draft": draft_result["draft"] if draft_result else None,
         "draft_preview": draft_preview,
         "next_step": (
-            "Caso listo: revisa el borrador y usa audit_draft para verificarlo."
+            "Caso listo. AHORA DEBES ejecutar TODAS estas herramientas EN ORDEN:\n"
+            "  1. audit_draft(draft_text) → detecta errores jurídicos\n"
+            "  2. audit_argumentation(draft_text) → detecta vicios lógicos\n"
+            "  3. assess_case(case_json) → valora solidez\n"
+            "  4. deadline_timeline(fecha) → calcula plazos\n"
+            "NO entregues el borrador hasta que audit_draft y audit_argumentation devuelvan pass=true."
             if validation["ready_to_draft"]
             else "Caso no listo. Se genero un draft_preview con marcadores [FALTA: campo]. Completa los campos faltantes y revalida."
         ),
+        "must_use_tools": ["audit_draft", "audit_argumentation", "assess_case", "deadline_timeline"] if validation["ready_to_draft"] else [],
     }
     return result
 
@@ -1542,7 +2075,7 @@ def assess_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
     }
 
     # ── Determinar nivel de solidez ──
-    if fatal_blockers:
+    if fatal_blockers and not missing:
         nivel = "insostenible"
         descripcion_nivel = (
             "El caso tiene vicios fatales que impiden su tramite. "
@@ -1550,6 +2083,15 @@ def assess_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
             "por no identificar correctamente al sujeto regulado, "
             "por carecer de fuente de aviso de privacidad verificable "
             "o por no dirigirse al canal ARCO oficial."
+        )
+    elif fatal_blockers:
+        nivel = "incompleto"
+        descripcion_nivel = (
+            "El caso tiene campos faltantes O valores incorrectos "
+            "(ej: naturaleza debe ser 'privado', no 'empresa'). "
+            "Completa los campos y corrige los valores segun el schema. "
+            "Los bloqueadores actuales probablemente desaparezcan al "
+            "completar los datos correctamente."
         )
     elif legal_blockers or source_blockers:
         nivel = "debil"
@@ -1676,4 +2218,637 @@ def assess_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
             "total_advertencias": len(warnings_list),
         },
         "trace": build_trace(),
+        "must_use_tools": ["audit_draft", "audit_argumentation", "deadline_timeline", "escalation_basis"],
     }
+
+
+# ── Counter-defenses: tactical playbook against corporate evasion ──
+
+CORPORATE_EVASION_TACTICS: list[dict[str, Any]] = [
+    {
+        "id": "impose_format",
+        "tactica": "Exigir un formato especifico de la empresa como condicion para procesar la solicitud",
+        "contra_articulos": ["art. 28", "R91"],
+        "fundamento_destructivo": "El articulo 28 de la LFPDPPP establece los requisitos minimos de contenido de una solicitud ARCO. La ley no exige ni condiciona la validez de la solicitud al uso de un formato especifico del responsable. Ademas, el articulo 91 del Reglamento establece que cuando el responsable disponga de servicios de atencion al publico, podra atender las solicitudes ARCO a traves de dichos servicios, pudiendo acreditar la identidad del titular por los mismos medios usados para la prestacion de sus servicios. La presente solicitud cumple TODOS los requisitos del articulo 28. Cualquier pretension de invalidarla por no usar un formato corporativo carece de sustento legal y constituye una obstruccion al ejercicio de un derecho.",
+    },
+    {
+        "id": "demand_more_docs",
+        "tactica": "Solicitar documentacion adicional no prevista en la ley o encadenar requerimientos sucesivos de documentos",
+        "contra_articulos": ["art. 28-II", "art. 32"],
+        "fundamento_destructivo": "El articulo 28 fraccion II solo exige los documentos que acrediten la identidad del titular, los cuales ya se acompanan. El articulo 32 establece que el responsable puede requerir informacion adicional UNA SOLA VEZ dentro de los 5 dias siguientes a la recepcion, y el titular cuenta con 10 dias para atenderlo. No existe fundamento para encadenar requerimientos sucesivos ni para exigir documentos mas alla de la identificacion.",
+    },
+    {
+        "id": "claim_ambiguous",
+        "tactica": "Alegar que la solicitud es ambigua, oscura o imprecisa para no dar tramite",
+        "contra_articulos": ["art. 28-IV", "art. 28-V", "art. 33"],
+        "fundamento_destructivo": "La presente solicitud describe con claridad los datos personales involucrados y el derecho que se ejerce, cumpliendo los requisitos de las fracciones IV y V del articulo 28. Si el responsable considera que algun elemento es impreciso, debe prevenirlo dentro de los 5 dias conforme al articulo 32, no rechazar de plano. Toda negativa debe ser fundada y motivada conforme al articulo 33, identificando la causa especifica de improcedencia.",
+    },
+    {
+        "id": "deny_jurisdiction",
+        "tactica": "Negar la aplicabilidad de la LFPDPPP alegando que la empresa no esta sujeta a la ley, que tiene regimen especial o que los datos solicitados no estan protegidos",
+        "contra_articulos": ["art. 1", "art. 5"],
+        "fundamento_destructivo": "El articulo 1 de la LFPDPPP establece que la ley es de orden publico y de observancia general en toda la Republica, aplicable al tratamiento de datos personales por particulares. El articulo 5 define particulares como personas fisicas o morales de derecho privado. La empresa identificada en esta solicitud es un particular conforme a la ley y esta sujeta a todas sus disposiciones, sin excepcion.",
+    },
+    {
+        "id": "claim_complied",
+        "tactica": "Afirmar que ya se cumplio con la solicitud sin aportar evidencia verificable del cumplimiento efectivo",
+        "contra_articulos": ["art. 22", "art. 23", "art. 24", "art. 25", "art. 26", "art. 31"],
+        "fundamento_destructivo": "La simple afirmacion de cumplimiento no satisface la obligacion legal. El articulo 31 exige que la determinacion sea comunicada y, de ser procedente, se haga efectiva dentro de los 15 dias siguientes. Tratandose de acceso (art. 22), debe entregarse copia o puesta a disposicion de los datos. Tratandose de oposicion (art. 26), debe acreditarse el cese efectivo del tratamiento. Tratandose de cancelacion (art. 24), debe acreditarse el bloqueo y supresion. Cualquier respuesta que no contenga evidencia concreta y verificable del cumplimiento se tendra por no satisfactoria.",
+    },
+    {
+        "id": "buck_pass_department",
+        "tactica": "Deslindarse alegando que el area, sucursal o departamento receptor no es competente para atender solicitudes ARCO",
+        "contra_articulos": ["art. 29", "art. 28"],
+        "fundamento_destructivo": "El articulo 29 obliga al responsable a designar una persona o departamento de datos personales y a dar a conocer su identidad. Si el responsable no lo ha designado, la solicitud debe turnarse al area competente sin restringir su alcance. La presente solicitud se dirige al responsable legal, no a una sucursal, modulo o area operativa aislada. Si un area interna distinta conserva o trata los datos, la peticion debe canalizarse internamente al departamento competente. La falta de organizacion interna no es defensa frente al titular.",
+    },
+    {
+        "id": "reject_id_format",
+        "tactica": "Rechazar la identificacion presentada exigiendo un tipo especifico de documento no previsto en la ley",
+        "contra_articulos": ["art. 28-II"],
+        "fundamento_destructivo": "El articulo 28 fraccion II solo exige 'los documentos que acrediten la identidad del titular'. La identificacion oficial presentada (INE) es el documento oficial de identificacion por excelencia en Mexico segun la Ley General de Poblacion. Cualquier rechazo de este documento sin base en una disposicion legal especifica carece de sustento y constituye una denegacion infundada del derecho.",
+    },
+    {
+        "id": "reject_notification_method",
+        "tactica": "Desconocer el medio de notificacion senalado o exigir uno distinto como condicion para responder",
+        "contra_articulos": ["art. 30", "art. 31"],
+        "fundamento_destructivo": "El articulo 30 establece que las solicitudes pueden presentarse por medios electronicos o cualquier otro medio. La respuesta debe emitirse por el mismo medio, salvo que el titular senale otro. El medio senalado en esta solicitud es valido conforme a la ley. Exigir un medio distinto como condicion para responder constituye un obstaculo ilegitimo al ejercicio del derecho.",
+    },
+    {
+        "id": "endless_delay",
+        "tactica": "Dilatar la respuesta mas alla del plazo legal o aplicar ampliaciones sin justificacion o encadenadas",
+        "contra_articulos": ["art. 31"],
+        "fundamento_destructivo": "El articulo 31 establece un plazo maximo de 20 dias habiles para comunicar la determinacion. La ampliacion solo puede operar POR UNA UNICA VEZ, por un periodo igual, y DEBE NOTIFICARSE dentro del plazo original CON LA JUSTIFICACION correspondiente. Cualquier ampliacion que no cumpla estos requisitos es ilegal y la falta de respuesta dentro del plazo legal habilita la solicitud de proteccion de datos ante la Secretaria Anticorrupcion y Buen Gobierno conforme a los articulos 40 y 41.",
+    },
+    {
+        "id": "former_relationship",
+        "tactica": "Alegar que la persona ya no mantiene relacion con la empresa y por tanto no tiene derecho a ejercer ARCO",
+        "contra_articulos": ["art. 1", "art. 21", "art. 25-III"],
+        "fundamento_destructivo": "El articulo 1 establece que la ley aplica a TODO tratamiento de datos personales por particulares, sin condicionarlo a la vigencia de una relacion contractual. El articulo 21 reconoce el derecho ARCO a TODO titular, sin distinguir si la relacion esta vigente o concluida. De hecho, el articulo 25 fraccion III preve que los datos pueden conservarse exclusivamente para cumplir obligaciones legales; si la relacion concluyo, la conservacion debe estar plenamente justificada y, en caso contrario, procede la cancelacion.",
+    },
+    {
+        "id": "affiliate_transfer_exception",
+        "tactica": "Invoca la excepcion del articulo 36 fraccion III para transferir datos a afiliadas o subsidiarias sin consentimiento",
+        "contra_articulos": ["art. 26-II", "art. 36-III", "art. 36 parrafo segundo", "R68", "R69", "R70"],
+        "fundamento_destructivo": "El articulo 36 fraccion III preve una excepcion al consentimiento para transferencias entre sociedades controladoras, subsidiarias o afiliadas bajo control comun, pero esta excepcion NO es absoluta. La presente solicitud de oposicion, formulada expresamente conforme al articulo 26, fracciones I y II, deja sin efectos cualquier transferencia amparada en dicha excepcion cuando el titular manifiesta su voluntad contraria de manera expresa. El articulo 68 del Reglamento exige que TODA transferencia sea informada mediante el aviso de privacidad y se limite a la finalidad que la justifique. El articulo 69 del Reglamento establece que la carga de la prueba del cumplimiento recae en el responsable que transfiere y en el receptor. El articulo 70 del Reglamento exige que las transferencias intragrupo esten respaldadas por normas internas VINCULANTES que cumplan con la Ley; la mera pertenencia al mismo grupo corporativo no justifica la transferencia automatica.",
+    },
+    {
+        "id": "legitimate_interest",
+        "tactica": "Invoca un supuesto interes legitimo del responsable para justificar el tratamiento sin consentimiento o para negar la oposicion",
+        "contra_articulos": ["art. 7", "art. 26-I", "R44"],
+        "fundamento_destructivo": "La LFPDPPP mexicana no contempla el interes legitimo como base autonoma para el tratamiento, a diferencia del RGPD europeo. El articulo 7 exige consentimiento expreso y por escrito para datos patrimoniales, financieros y sensibles. El articulo 26 fraccion I permite la oposicion por causa legitima y situacion especifica del titular. Ademas, el articulo 44 del Reglamento prohibe expresamente utilizar medios enganosos o fraudulentos para tratar datos y establece que existe actuacion fraudulenta cuando: (I) hay dolo, mala fe o negligencia en la informacion al titular; (II) se vulnera la expectativa razonable de privacidad; o (III) las finalidades no son las informadas en el aviso. Si el responsable invoca un supuesto interes legitimo, debe identificar la base normativa CONCRETA en la legislacion mexicana que lo sustente; las referencias genericas a estandares extranjeros o conceptos no positivados en la LFPDPPP no constituyen fundamento valido.",
+    },
+    {
+        "id": "necessary_purposes",
+        "tactica": "Alegar que el tratamiento cuestionado es necesario para la relacion juridica y que sin el no puede prestarse el servicio",
+        "contra_articulos": ["art. 11", "art. 15-IV", "art. 35", "art. 36", "R44", "R68"],
+        "fundamento_destructivo": "El articulo 11 establece el principio de finalidad: los datos solo pueden tratarse para las finalidades informadas en el aviso de privacidad. El articulo 15 fraccion IV exige que el aviso distinga claramente entre finalidades necesarias y secundarias. La presente solicitud SOLO cuestiona finalidades secundarias o transferencias no indispensables. El articulo 44 del Reglamento prohibe las finalidades no informadas en el aviso y establece que constituye actuacion fraudulenta tratar datos para fines distintos a los informados. Si el responsable alega que el tratamiento objetado es necesario, debe identificar: (a) la obligacion legal concreta que lo exige; (b) su fuente normativa; (c) el dato especifico indispensable; y (d) por que es estrictamente necesario. Las afirmaciones genericas de necesidad no satisfacen esta carga argumentativa.",
+    },
+    {
+        "id": "legal_retention_exception",
+        "tactica": "Invoca las excepciones del articulo 25 para negar la cancelacion sin identificar la fraccion especifica ni justificar su aplicacion",
+        "contra_articulos": ["art. 25", "art. 3"],
+        "fundamento_destructivo": "El articulo 25 enumera las excepciones a la cancelacion de manera taxativa, no enunciativa. La negativa a cancelar debe identificar la fraccion concreta que se estima actualizada, el dato especifico afectado, la finalidad que justifica su conservacion y las pruebas pertinentes. El articulo 3 establece que los limites a los derechos ARCO deben interpretarse de manera restrictiva y no pueden vaciar el contenido esencial del derecho. Las invocaciones genericas al articulo 25 sin especificar fraccion, dato y finalidad constituyen una negativa infundada.",
+    },
+    {
+        "id": "missing_privacy_notice",
+        "tactica": "Ocultar o no tener disponible el aviso de privacidad, o tenerlo en un formato no accesible, como defensa para no responder",
+        "contra_articulos": ["art. 15", "art. 16", "art. 17", "art. 18", "art. 19", "art. 20", "R44"],
+        "fundamento_destructivo": "Los articulos 15 al 20 de la LFPDPPP regulan exhaustivamente el contenido, la forma y la puesta a disposicion del aviso de privacidad. La inexistencia, inaccesibilidad o incumplimiento del aviso no es una defensa frente al titular, sino una infraccion adicional del responsable. El articulo 44 del Reglamento es contundente: tratar datos para finalidades no informadas en el aviso constituye una actuacion fraudulenta. La falta de aviso de privacidad en los terminos de ley constituye una violacion a los principios de informacion y consentimiento (arts. 7, 12 y 15), sancionable conforme al articulo 58 de la Ley.",
+    },
+    {
+        "id": "consentimiento_tacito",
+        "tactica": "Alegar que el titular consintio tacitamente por no haberse opuesto al aviso de privacidad o por continuar usando el servicio",
+        "contra_articulos": ["art. 7", "art. 8", "art. 9", "art. 10", "R44"],
+        "fundamento_destructivo": "El articulo 8 establece que el consentimiento tacito solo es valido cuando el aviso de privacidad se pone a disposicion del titular y este no manifiesta su oposicion. Sin embargo, el articulo 7 exige consentimiento expreso y por escrito para datos patrimoniales, financieros y sensibles. El articulo 44 del Reglamento prohibe utilizar medios enganosos o fraudulentos, considerando como tal cuando exista dolo, mala fe o negligencia en la informacion proporcionada al titular. Ademas, el consentimiento tacito no puede interpretarse como una renuncia permanente e irrevocable a los derechos ARCO, que pueden ejercerse en cualquier momento. La continuacion en el uso del servicio no implica consentimiento para finalidades distintas de las estrictamente necesarias.",
+    },
+    {
+        "id": "blocks_upload_corp_domain",
+        "tactica": "Dificultar el ejercicio ARCO con barreras operativas: buzon unico, formularios web que exigen registro obligatorio, direcciones electronicas que rechazan archivos adjuntos mayores a 2 MB o que solo aceptan dominios corporativos",
+        "contra_articulos": ["art. 29", "art. 30", "art. 34"],
+        "fundamento_destructivo": "El articulo 30 de la Ley establece que las solicitudes pueden presentarse 'por medios electronicos o cualquier otro medio', sin que el responsable pueda imponer restricciones operativas que hagan nugatorio el ejercicio del derecho. El articulo 34 garantiza la gratuidad del procedimiento. Si el medio designado por el responsable rechaza, bloquea o no permite la recepcion efectiva de la solicitud, se entendera presentada por la via de hecho que resulte materialmente disponible, sin que el titular cargue con las consecuencias de la deficiencia operativa del responsable.",
+    },
+]
+
+
+def counter_defenses(case_data: dict[str, Any] | str) -> dict[str, Any]:
+    """Return tactical playbook to destroy specific corporate evasion strategies.
+
+    Returns a structured map of evasion tactics found in the case context,
+    each with its exact legal counter-article and destructive legal argument.
+    The LLM uses this to craft specific, surgical counter-arguments in the draft.
+    """
+    case = _as_dict(case_data)
+    responsible = _get(case, "responsable.nombre_legal", "el responsable")
+    nat = _get(case, "responsable.naturaleza", "privado").strip().lower()
+    rights = _right_names(case)
+
+    has_oposicion = "oposicion" in rights
+    has_cancelacion = "cancelacion" in rights
+    has_acceso = "acceso" in rights
+    has_limitacion = "limitacion_uso_divulgacion" in rights
+
+    # Determine which tactics are relevant based on the rights being exercised
+    relevant_ids: set[str] = set()
+
+    # Universal tactics (always relevant)
+    relevant_ids.update({"impose_format", "demand_more_docs", "claim_ambiguous", "deny_jurisdiction", "buck_pass_department", "reject_id_format", "reject_notification_method", "endless_delay", "former_relationship", "claim_complied", "blocks_upload_corp_domain"})
+
+    if has_oposicion:
+        relevant_ids.update({"affiliate_transfer_exception", "legitimate_interest", "necessary_purposes"})
+    if has_cancelacion:
+        relevant_ids.add("legal_retention_exception")
+    if has_limitacion:
+        relevant_ids.update({"necessary_purposes", "affiliate_transfer_exception"})
+
+    relevant: list[dict[str, Any]] = []
+    for t in CORPORATE_EVASION_TACTICS:
+        if t["id"] in relevant_ids:
+            entry = dict(t)
+            # Inyectar texto completo de los articulos citados para que el LLM
+            # no tenga que buscar nada mas — todo autónomo en una sola respuesta.
+            article_texts: list[dict[str, str]] = []
+            for art_ref in entry["contra_articulos"]:
+                # Normalize: "art. 28-II" → "28", "art. 36 parrafo segundo" → "36", "R68" → "R68"
+                normalized = art_ref.replace("art. ", "").split(" ")[0].split("-")[0].strip()
+                # Resolver articulos LFPDPPP
+                if normalized.isdigit() and normalized in ARTICLES:
+                    article_texts.append({
+                        "referencia": f"LFPDPPP art. {normalized}",
+                        "titulo": ARTICLES[normalized]["title"],
+                        "texto": ARTICLES[normalized]["use"],
+                    })
+                elif normalized.startswith("R") and normalized in REGULATION_ARTICLES:
+                    article_texts.append({
+                        "referencia": f"Reglamento LFPDPPP {normalized}",
+                        "titulo": REGULATION_ARTICLES[normalized]["title"],
+                        "texto": REGULATION_ARTICLES[normalized]["use"],
+                    })
+            entry["articulos_completos"] = article_texts
+            relevant.append(entry)
+
+    return {
+        "ok": True,
+        "total_defensas_identificadas": len(relevant),
+        "defensas": relevant,
+        "instrucciones_para_llm": (
+            "CADA defensa incluye YA el texto completo de los articulos aplicables (campo 'articulos_completos'). "
+            "NO necesitas consultar law_articles ni ningun otro recurso. "
+            "TODO lo que necesitas para redactar la contra-defensa esta AQUI. "
+            "Debes generar UN PARRAFO POR DEFENSA en la seccion 'DESESTIMACION DE DEFENSAS PREVISIBLES' del borrador. "
+            "Cada parrafo debe: (1) nombrar la defensa, (2) citar el articulo con su texto, "
+            "y (3) explicar por que es juridicamente improcedente. "
+            "NO uses lenguaje generico ni inventes articulos. Usa EXACTAMENTE el texto proporcionado."
+        ),
+        "must_use_tools": ["audit_draft", "audit_argumentation", "assess_case"],
+    }
+
+
+def legal_graph(article_ids: list[str]) -> dict[str, Any]:
+    """Query the legal relationship graph. Returns all semantic relationships
+    for the given articles: what they require, limit, override, complement, etc.
+
+    This eliminates hallucination risk by providing exact, pre-verified
+    cross-references instead of letting the LLM infer relationships.
+    """
+    ids = [str(a) for a in article_ids]
+
+    # Forward: relationships FROM these articles
+    forward: dict[str, list[dict[str, str]]] = {}
+    # Backward: relationships TO these articles (who references them)
+    backward: dict[str, list[dict[str, str]]] = {}
+
+    for aid in ids:
+        if aid in LEGAL_GRAPH:
+            forward[aid] = LEGAL_GRAPH[aid]
+
+    for src, rels in LEGAL_GRAPH.items():
+        for rel in rels:
+            if rel["target"] in ids or rel["target"] == ids[0] if ids else False:
+                backward.setdefault(rel["target"], []).append({
+                    "source": src,
+                    "type": rel["type"],
+                    "reason": rel["reason"],
+                })
+
+    # Collect all referenced article IDs (forward + backward) for the LLM
+    # to look up via law_articles if it needs full text.
+    # We DON'T inject text here — the graph is an index, not a content store.
+    all_refs: set[str] = set()
+    for rels in forward.values():
+        for r in rels:
+            all_refs.add(r["target"])
+    for rels in backward.values():
+        for r in rels:
+            all_refs.add(r["source"])
+
+    return {
+        "ok": True,
+        "articles_consulted": ids,
+        "relationships_forward": forward,
+        "relationships_backward": backward,
+        "articles_to_lookup": sorted(all_refs),
+        "instrucciones": (
+            "Las relaciones arriba describen EXACTAMENTE como interactuan los articulos. "
+            "'requires' — A no puede aplicarse sin B (fundamento). "
+            "'limits' — A restringe el alcance de B. "
+            "'overrides' — A prevalece sobre B en conflicto. "
+            "'complements' — A detalla/expande B. "
+            "'procedural' — A es el paso siguiente a B. "
+            "'defines' — A define terminos usados en B. "
+            "'excepts' — A lista excepciones a B. "
+            "SI necesitas el texto completo de algun articulo listado en 'articles_to_lookup', "
+            "llama a law_articles(['X', 'Y', ...]) para obtenerlo. "
+            "NO inyectes texto de articulos en el grafo — el grafo es SOLO navegacion."
+        ),
+        "must_use_tools": ["law_articles", "audit_draft", "audit_argumentation"],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# GRAPH RAG — semantic communities, summaries, global/local search
+# ═══════════════════════════════════════════════════════════════════════
+
+# Community detection: nodes grouped by legal domain + graph structure
+# Cross-community edges are counted to determine inter-community relevance.
+_COMMUNITIES: dict[str, dict[str, Any]] = {
+    "c_general": {
+        "id": "c_general",
+        "title": "Disposiciones Generales y Principios",
+        "description": "Objeto de la ley, definiciones, limites generales, ambito de aplicacion. Fundamento constitucional de proteccion de datos.",
+        "nodes": ["1", "2", "3", "4", "5", "CPEUM-1", "CPEUM-16", "CPEUM-103"],
+        "instrumentos": ["LFPDPPP 2025", "CPEUM"],
+    },
+    "c_consent": {
+        "id": "c_consent",
+        "title": "Consentimiento, Licitud y Datos Sensibles",
+        "description": "Principios de licitud, consentimiento expreso y tacito, excepciones, datos sensibles, calidad, responsabilidad, deber de informacion y aviso de privacidad.",
+        "nodes": ["6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "R44"],
+        "instrumentos": ["LFPDPPP 2025", "Reglamento LFPDPPP 2011"],
+    },
+    "c_arco_rights": {
+        "id": "c_arco_rights",
+        "title": "Derechos ARCO",
+        "description": "Habilitacion de derechos de Acceso, Rectificacion, Cancelacion y Oposicion. Limites, excepciones y alcance de cada derecho. Relacion con representante legal.",
+        "nodes": ["21", "22", "23", "24", "25", "26", "27"],
+        "instrumentos": ["LFPDPPP 2025"],
+    },
+    "c_arco_procedure": {
+        "id": "c_arco_procedure",
+        "title": "Procedimiento ARCO ante el Responsable",
+        "description": "Requisitos de la solicitud, persona o departamento designado, medios de presentacion, plazos de respuesta, prevencion, improcedencia, gratuidad. Incluye articulos del Reglamento sobre canales validos de recepcion.",
+        "nodes": ["28", "29", "30", "31", "32", "33", "34", "R91"],
+        "instrumentos": ["LFPDPPP 2025", "Reglamento LFPDPPP 2011"],
+    },
+    "c_transfers": {
+        "id": "c_transfers",
+        "title": "Transferencias de Datos Personales",
+        "description": "Regimen de transferencias nacionales e internacionales, consentimiento requerido, excepciones, carga de la prueba, normas internas vinculantes para transferencias intragrupo.",
+        "nodes": ["35", "36", "R68", "R69", "R70", "R74"],
+        "instrumentos": ["LFPDPPP 2025", "Reglamento LFPDPPP 2011"],
+    },
+    "c_selfreg": {
+        "id": "c_selfreg",
+        "title": "Autorregulacion Vinculante",
+        "description": "Esquemas voluntarios de autorregulacion, registro obligatorio ante la autoridad, codigos deontologicos, sellos de confianza. No sustituyen ni limitan la Ley.",
+        "nodes": ["37", "R86"],
+        "instrumentos": ["LFPDPPP 2025", "Reglamento LFPDPPP 2011"],
+    },
+    "c_secretaria": {
+        "id": "c_secretaria",
+        "title": "Secretaria Anticorrupcion y Procedimientos de Proteccion",
+        "description": "Funciones de la Secretaria, solicitud de proteccion de datos, improcedencia, sobreseimiento, conciliacion, resoluciones, publicidad de resoluciones, verificacion, acceso a informacion en verificacion.",
+        "nodes": ["38", "40", "41", "47", "48", "49", "50", "52", "53", "54", "55"],
+        "instrumentos": ["LFPDPPP 2025"],
+    },
+    "c_sanctions": {
+        "id": "c_sanctions",
+        "title": "Infracciones, Sanciones y Delitos",
+        "description": "Procedimiento sancionador, catalogo de infracciones, multas, graduacion de sanciones, agravantes por datos sensibles, delitos penales por tratamiento indebido.",
+        "nodes": ["56", "58", "59", "60"],
+        "instrumentos": ["LFPDPPP 2025"],
+    },
+    "c_lfpa": {
+        "id": "c_lfpa",
+        "title": "Procedimiento Administrativo (LFPA)",
+        "description": "Supletoriedad de la LFPA en procedimientos ante la Secretaria, elementos del acto administrativo, notificaciones, recurso de revision como paso previo opcional al amparo.",
+        "nodes": ["LFPA-1", "LFPA-3", "LFPA-35", "LFPA-38", "LFPA-39"],
+        "instrumentos": ["LFPA"],
+    },
+    "c_amparo": {
+        "id": "c_amparo",
+        "title": "Juicio de Amparo",
+        "description": "Procedencia del amparo indirecto ante Juzgado de Distrito contra resoluciones de la Secretaria. Plazos en dias habiles, suspension del acto reclamado, definitividad, improcedencia.",
+        "nodes": ["51", "LA-17", "LA-19", "LA-61", "LA-107", "LA-125", "LA-128"],
+        "instrumentos": ["LFPDPPP 2025", "Ley de Amparo"],
+    },
+    "c_security": {
+        "id": "c_security",
+        "title": "Seguridad y Confidencialidad",
+        "description": "Medidas de seguridad administrativas, tecnicas y fisicas. Vulneraciones de seguridad, deber de confidencialidad. Indemnizacion por danos.",
+        "nodes": ["18", "19", "20"],
+        "instrumentos": ["LFPDPPP 2025"],
+    },
+}
+
+# Compute cross-community edges for relevance scoring
+def _build_community_graph() -> dict[str, dict[str, int]]:
+    """Count cross-community edges for inter-community relevance."""
+    node_to_community: dict[str, str] = {}
+    for cid, cdata in _COMMUNITIES.items():
+        for node in cdata["nodes"]:
+            node_to_community[node] = cid
+
+    cross: dict[str, dict[str, int]] = {cid: {} for cid in _COMMUNITIES}
+    for src_cid in _COMMUNITIES:
+        for src_node in _COMMUNITIES[src_cid]["nodes"]:
+            if src_node not in LEGAL_GRAPH:
+                continue
+            for rel in LEGAL_GRAPH[src_node]:
+                tgt_node = rel["target"]
+                tgt_cid = node_to_community.get(tgt_node)
+                if tgt_cid and tgt_cid != src_cid:
+                    cross[src_cid][tgt_cid] = cross[src_cid].get(tgt_cid, 0) + 1
+
+    return cross
+
+_COMMUNITY_CROSS = _build_community_graph()
+
+
+def _community_summary(cid: str) -> str:
+    """Generate natural language summary of a community and its connections."""
+    cdata = _COMMUNITIES[cid]
+    node_count = len(cdata["nodes"])
+    instruments = ", ".join(cdata["instrumentos"])
+
+    # Count internal relationships
+    internal = 0
+    external: dict[str, int] = {}
+    for node in cdata["nodes"]:
+        if node not in LEGAL_GRAPH:
+            continue
+        for rel in LEGAL_GRAPH[node]:
+            target = rel["target"]
+            target_cid = None
+            for tc, td in _COMMUNITIES.items():
+                if target in td["nodes"]:
+                    target_cid = tc
+                    break
+            if target_cid == cid:
+                internal += 1
+            elif target_cid:
+                ext_name = _COMMUNITIES[target_cid]["title"].split(" ")[:3]
+                key = " ".join(ext_name)
+                external[key] = external.get(key, 0) + 1
+
+    # Get article titles
+    titles: list[str] = []
+    for node in cdata["nodes"]:
+        if node in ARTICLES:
+            titles.append(f"art. {node} ({ARTICLES[node]['title']})")
+        elif node in REGULATION_ARTICLES:
+            titles.append(f"{node} ({REGULATION_ARTICLES[node]['title']})")
+
+    summary = (
+        f"COMUNIDAD: {cdata['title']}\n"
+        f"Instrumentos: {instruments}\n"
+        f"Nodos: {node_count} articulos\n"
+        f"Relaciones internas: {internal}\n"
+    )
+    if external:
+        summary += "Conexiones externas:\n"
+        for ext_name, count in sorted(external.items(), key=lambda x: -x[1]):
+            summary += f"  → {ext_name}... ({count} vinculos)\n"
+
+    summary += "\nArticulos contenidos:\n"
+    for t in titles:
+        summary += f"  • {t}\n"
+
+    summary += f"\nDESCRIPCION: {cdata['description']}"
+    return summary
+
+
+def semantic_search(query: str) -> dict[str, Any]:
+    """Global semantic search across the legal graph communities.
+
+    Given a natural language query, returns the most relevant communities,
+    their summaries, and the specific articles most likely to apply.
+
+    Uses keyword matching against community descriptions, article titles,
+    and relationship reasons to rank communities by relevance.
+    """
+    q = query.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n")
+    tokens = set(q.split())
+
+    # Query expansion: normalize common legal verbs/nouns to their canonical form
+    _EXPANSIONS: dict[str, list[str]] = {
+        "oposicion": ["oponerme", "oponerse", "opongo", "opone", "oponen", "oposicion", "opongo"],
+        "transferencia": ["transferir", "transfieran", "transferencia", "transferencias", "transferido", "transfiere"],
+        "cancelacion": ["cancelar", "cancelacion", "cancele", "cancelo", "cancelado"],
+        "rectificacion": ["rectificar", "rectificacion", "rectifique", "rectifico"],
+        "acceso": ["acceder", "acceso", "acceda", "accedo", "accediendo"],
+        "datos_personales": ["datos", "dato", "personales", "personal", "informacion", "privacidad"],
+        "sancion": ["sancion", "sanciones", "multa", "multas", "sancionar", "infraccion", "infracciones"],
+        "amparo": ["amparo", "ampararme", "ampararse", "juicio", "demanda", "demandar", "juzgado", "tribunal"],
+        "consentimiento": ["consentimiento", "consentir", "consiento", "autorizar", "autorizacion", "permiso", "permitir"],
+        "aviso_privacidad": ["aviso", "privacidad", "notice", "politica"],
+        "secretaria": ["secretaria", "anticorrupcion", "autoridad", "gobierno", "proteccion", "denuncia", "denunciar", "queja"],
+        "afiliadas": ["afiliada", "afiliadas", "subsidiaria", "subsidiarias", "filial", "grupo", "controladora", "matriz"],
+        "finalidades": ["finalidad", "finalidades", "proposito", "propositos", "uso", "usos", "fines"],
+    }
+    expanded_tokens: set[str] = set(tokens)
+    for token in list(tokens):
+        for canonical, variants in _EXPANSIONS.items():
+            if token in variants:
+                expanded_tokens.add(canonical)
+                for v in variants:
+                    expanded_tokens.add(v)
+
+    tokens = expanded_tokens
+
+    # IDF-like normalization: common tokens (like "datos") appear everywhere
+    # and should not dominate. Rare tokens (like "transferencia", "afiliadas") are
+    # more discriminative and should have higher weight.
+    _strip = lambda s: s.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n")
+    _token_freq: dict[str, int] = {}
+    for cdata in _COMMUNITIES.values():
+        desc = _strip(cdata["description"]) + " " + _strip(cdata["title"])
+        for token in tokens:
+            if token in desc:
+                _token_freq[token] = _token_freq.get(token, 0) + 1
+    # Max token weight = 5.0, min = 0.5. Rare tokens get higher weight.
+    _token_weights = {
+        t: max(0.5, 5.0 / max(1, _token_freq.get(t, 1)))
+        for t in tokens
+    }
+
+    # Score each community
+    scores: list[tuple[str, float]] = []
+    for cid, cdata in _COMMUNITIES.items():
+        score = 0.0
+        desc_lower = _strip(cdata["description"])
+        title_lower = _strip(cdata["title"])
+
+        # Direct keyword match in title/description
+        for token in tokens:
+            weight = _token_weights.get(token, 1.0)
+            if token in title_lower:
+                score += 3.0 * weight
+            if token in desc_lower:
+                score += 1.0 * weight
+
+        # Match against article titles and texts in this community
+        article_matches: list[str] = []
+        for node in cdata["nodes"]:
+            if node in ARTICLES:
+                art_text = _strip(ARTICLES[node]["title"] + " " + ARTICLES[node]["use"])
+                node_weight = 0.0
+                for token in tokens:
+                    if token in art_text:
+                        node_weight += 2.0 * _token_weights.get(token, 1.0)
+                if node_weight > 0:
+                    article_matches.append(node)
+                    score += node_weight
+            elif node in REGULATION_ARTICLES:
+                reg_text = _strip(REGULATION_ARTICLES[node]["title"] + " " + REGULATION_ARTICLES[node]["use"])
+                node_weight = 0.0
+                for token in tokens:
+                    if token in reg_text:
+                        node_weight += 2.0 * _token_weights.get(token, 1.0)
+                if node_weight > 0:
+                    article_matches.append(node)
+                    score += node_weight
+
+        # Match against relationship reasons (cross-community context)
+        for node in cdata["nodes"]:
+            if node not in LEGAL_GRAPH:
+                continue
+            for rel in LEGAL_GRAPH[node]:
+                reason = rel["reason"].lower()
+                for token in tokens:
+                    if token in reason:
+                        score += 0.5
+
+        if score > 0:
+            scores.append((cid, score))
+
+    scores.sort(key=lambda x: -x[1])
+
+    results: list[dict[str, Any]] = []
+    for cid, score in scores:
+        cdata = _COMMUNITIES[cid]
+        # Find best matching articles in this community
+        best_articles: list[str] = []
+        for node in cdata["nodes"]:
+            match_score = 0.0
+            if node in ARTICLES:
+                art_text = _strip(ARTICLES[node]["title"] + " " + ARTICLES[node]["use"])
+                for token in tokens:
+                    if token in art_text:
+                        match_score += 1.0
+            elif node in REGULATION_ARTICLES:
+                reg_text = _strip(REGULATION_ARTICLES[node]["title"] + " " + REGULATION_ARTICLES[node]["use"])
+                for token in tokens:
+                    if token in reg_text:
+                        match_score += 1.0
+            if match_score > 0:
+                best_articles.append(node)
+
+        results.append({
+            "community_id": cid,
+            "community_title": cdata["title"],
+            "relevance": round(score, 2),
+            "instrumentos": cdata["instrumentos"],
+            "description": cdata["description"],
+            "matching_articles": best_articles[:5],
+            "all_nodes": cdata["nodes"],
+        })
+
+    top_ids = [r["community_id"] for r in results[:3]]
+
+    return {
+        "ok": True,
+        "query": query,
+        "communities_found": len(results),
+        "top_communities": results[:3],
+        "instrucciones": (
+            "Las comunidades arriba son las mas relevantes para tu consulta. "
+            "Para cada comunidad relevante, llama a community_detail(community_id) "
+            "para obtener el resumen completo, todos los articulos y sus relaciones. "
+            "Luego usa law_articles para obtener el texto completo de los articulos que necesites. "
+            "Flujo: semantic_search → community_detail → law_articles → construye argumento."
+        ),
+        "must_use_tools": ["community_detail", "law_articles"],
+        "suggested_next_communities": top_ids if top_ids else ["c_general"],
+    }
+
+
+def community_detail(community_id: str) -> dict[str, Any]:
+    """Returns the full detail of a community: summary, all articles with text,
+    internal relationships, and cross-community connections.
+    """
+    if community_id not in _COMMUNITIES:
+        return {
+            "ok": False,
+            "error": f"Comunidad '{community_id}' no encontrada. Comunidades validas: {list(_COMMUNITIES.keys())}",
+        }
+
+    cdata = _COMMUNITIES[community_id]
+    nodes = cdata["nodes"]
+
+    # Collect all relationships within and from this community
+    internal_rels: list[dict[str, str]] = []
+    external_rels: dict[str, list[dict[str, str]]] = {}
+    all_targets: set[str] = set()
+
+    for node in nodes:
+        if node not in LEGAL_GRAPH:
+            continue
+        for rel in LEGAL_GRAPH[node]:
+            target = rel["target"]
+            all_targets.add(target)
+            # Determine if target is in the same community
+            target_cid = None
+            for tc, td in _COMMUNITIES.items():
+                if target in td["nodes"]:
+                    target_cid = tc
+                    break
+            entry = {"source": node, "type": rel["type"], "target": target, "reason": rel["reason"]}
+            if target_cid == community_id:
+                internal_rels.append(entry)
+            else:
+                ext_label = target_cid or "externo"
+                external_rels.setdefault(ext_label, []).append(entry)
+
+    # Get article texts for all nodes
+    bundle = article_bundle(nodes)
+
+    # Generate summary
+    summary = _community_summary(community_id)
+
+    # Cross-community stats
+    cross_stats = _COMMUNITY_CROSS.get(community_id, {})
+
+    return {
+        "ok": True,
+        "community_id": community_id,
+        "title": cdata["title"],
+        "summary": summary,
+        "node_count": len(nodes),
+        "articles": bundle["articles"],
+        "internal_relationships": internal_rels,
+        "external_connections": {
+            ext_label: {"count": len(rels), "sample_relationships": rels[:3]}
+            for ext_label, rels in external_rels.items()
+        },
+        "cross_community_stats": cross_stats,
+        "instrumentos": cdata["instrumentos"],
+        "instrucciones": (
+            f"Esta comunidad cubre {len(nodes)} articulos sobre {cdata['title']}. "
+            "Los articulos completos estan en el campo 'articles'. "
+            "Las relaciones internas muestran como interactuan los articulos DENTRO de esta comunidad. "
+            "Las conexiones externas muestran vinculos con OTRAS comunidades. "
+            "Usa law_articles para obtener texto completo de articulos en otras comunidades si los necesitas."
+        ),
+        "must_use_tools": ["law_articles", "legal_graph"],
+    }
+

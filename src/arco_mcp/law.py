@@ -78,6 +78,10 @@ ARTICLES = {
         "title": "Puesta a disposicion del aviso",
         "use": "El responsable debe poner el aviso a disposicion por medios impresos, digitales, visuales, sonoros u otra tecnologia, segun forma de obtencion.",
     },
+    "17": {
+        "title": "Aviso cuando datos no se recaban directamente",
+        "use": "Cuando los datos no se obtengan directamente del titular, el responsable debe darle a conocer el cambio en el aviso. No aplica para fines historicos, estadisticos o cientificos. Si es imposible o exige esfuerzos desproporcionados, pueden adoptarse medidas compensatorias segun el Reglamento.",
+    },
     "18": {
         "title": "Medidas de seguridad",
         "use": "Seguridad administrativa, tecnica y fisica.",
@@ -154,6 +158,10 @@ ARTICLES = {
         "title": "Transferencias sin consentimiento",
         "use": "Supuestos permitidos: ley, salud, grupo, contrato, interes publico, defensa judicial o relacion juridica.",
     },
+    "37": {
+        "title": "Esquemas de autorregulacion vinculante",
+        "use": "Personas fisicas o morales pueden convenir esquemas de autorregulacion vinculante que complementen la Ley. Deben contener mecanismos para medir su eficacia, consecuencias y medidas correctivas eficaces. Pueden traducirse en codigos deontologicos, sellos de confianza u otros mecanismos con reglas que armonicen tratamientos y faciliten derechos ARCO. Deben notificarse simultaneamente a las autoridades correspondientes y a la Secretaria. IMPORTANTE: un esquema de autorregulacion NO exime del cumplimiento de la Ley ni puede restringir derechos ARCO.",
+    },
     "38": {
         "title": "Objeto de la Secretaria",
         "use": "Promover ejercicio y vigilar observancia de la Ley.",
@@ -194,6 +202,10 @@ ARTICLES = {
         "title": "Improcedencia ante Secretaria",
         "use": "Incluye falta de competencia, identidad/representacion, cosa decidida, juicio en tramite, solicitud ofensiva o extemporanea.",
     },
+    "48": {
+        "title": "Sobreseimiento de la solicitud de proteccion",
+        "use": "La solicitud de proteccion de datos sera sobreseida cuando: I. La persona titular fallezca. El sobreseimiento NO implica validacion del actuar del responsable, solo la terminacion del procedimiento por causa superveniente.",
+    },
     "49": {
         "title": "Conciliacion",
         "use": "La Secretaria puede buscar conciliacion; acuerdo escrito tiene efectos vinculantes y deja sin materia la solicitud.",
@@ -206,6 +218,10 @@ ARTICLES = {
         "title": "Amparo",
         "use": "Contra resoluciones de la Secretaria procede juicio de amparo.",
     },
+    "52": {
+        "title": "Publicidad de resoluciones",
+        "use": "Todas las resoluciones de la Secretaria seran susceptibles de difundirse publicamente en versiones publicas, eliminando referencias que identifiquen o hagan identificable al titular.",
+    },
     "53": {
         "title": "Indemnizacion",
         "use": "El titular puede ejercer derechos para indemnizacion por dano o lesion causado por incumplimiento del responsable o encargado.",
@@ -213,6 +229,10 @@ ARTICLES = {
     "54": {
         "title": "Verificacion",
         "use": "Verificacion de oficio o a peticion de parte.",
+    },
+    "55": {
+        "title": "Acceso a informacion en verificacion",
+        "use": "En el procedimiento de verificacion la Secretaria tendra acceso a la informacion y documentacion que considere necesarias. Las personas servidoras publicas estan obligadas a guardar confidencialidad sobre la informacion conocida en la verificacion. El Reglamento desarrollara la forma, terminos y plazos del procedimiento.",
     },
     "56": {
         "title": "Inicio de sanciones",
@@ -255,12 +275,12 @@ ARTICLES = {
 
 RIGHTS = {
     "acceso": {
-        "articles": ["21", "22", "27", "28", "31", "32", "33", "34"],
+        "articles": ["21", "22", "28", "31", "32", "34"],
         "requires_data_description": False,
         "critical_fields": [],
     },
     "rectificacion": {
-        "articles": ["21", "23", "27", "28", "30", "31", "33", "34"],
+        "articles": ["21", "23", "28", "30", "31", "34"],
         "requires_data_description": True,
         "critical_fields": [
             "dato_actual_rectificacion",
@@ -269,12 +289,12 @@ RIGHTS = {
         ],
     },
     "cancelacion": {
-        "articles": ["21", "24", "25", "27", "28", "31", "33", "34"],
+        "articles": ["21", "24", "25", "28", "31", "34"],
         "requires_data_description": True,
         "critical_fields": [],
     },
     "oposicion": {
-        "articles": ["21", "26", "27", "28", "31", "33", "34"],
+        "articles": ["21", "26", "28", "31", "34"],
         "requires_data_description": True,
         "critical_fields": [
             "causa_legitima_oposicion",
@@ -299,11 +319,53 @@ RIGHTS = {
 
 BASE_ARTICLES = ["21", "27", "28", "29", "31", "33", "34"]
 GENERAL_LIMIT_ARTICLES = ["3", "4"]
-SECRETARIA_ARTICLES = ["38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "49", "50", "51", "53", "54"]
+GENERAL_PROVISIONS = ["1", "2", "5", "6", "9", "10", "13", "14", "16", "17"]
+SELF_REGULATION_ARTICLES = ["37"]
+SECRETARIA_ARTICLES = ["38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55"]
 SANCTION_ARTICLES = ["56", "57", "58", "59", "60", "61"]
 PENAL_ARTICLES = ["62", "63", "64"]
 SENSITIVE_ARTICLES = ["8", "12", "18", "19", "20"]
 TRANSFER_ARTICLES = ["11", "15", "35", "36"]
+
+# ── Reglamento LFPDPPP 2011 — principios procesales vigentes ──
+# El reglamento es de 21-dic-2011 y no ha sido armonizado con el decreto 2025.
+# Las referencias a "el Instituto" deben entenderse como la autoridad actual (Secretaria).
+# Las referencias a articulos de la "Ley" corresponden a la LFPDPPP 2010; los principios
+# juridicos subsisten aunque los numeros de articulo hayan cambiado.
+REGULATION_ARTICLES: dict[str, dict[str, str]] = {
+    "R44": {
+        "title": "Principio de lealtad — prohibicion de medios enganosos o fraudulentos",
+        "use": "No se podran utilizar medios enganosos o fraudulentos para recabar y tratar datos personales. Existe actuacion fraudulenta o enganosa cuando: I. Exista dolo, mala fe o negligencia en la informacion proporcionada al titular sobre el tratamiento; II. Se vulnere la expectativa razonable de privacidad del titular; III. Las finalidades no son las informadas en el aviso de privacidad. FUNDAMENTAL: si la empresa oculto finalidades en el aviso, hay dolo.",
+    },
+    "R68": {
+        "title": "Consentimiento para transferencias — aviso obligatorio",
+        "use": "Toda transferencia de datos personales, nacional o internacional, requiere consentimiento del titular salvo excepciones de ley, debe ser informada mediante el aviso de privacidad y limitarse a la finalidad que la justifique. Si la transferencia no esta en el aviso, es ilegal.",
+    },
+    "R69": {
+        "title": "Carga de la prueba en transferencias — recae en el responsable",
+        "use": "La carga de la prueba de que la transferencia se realizo conforme a la Ley y el Reglamento recae, en TODOS los casos, en el responsable que transfiere y en el receptor de los datos. La empresa no puede exigir al titular que demuestre que la transferencia fue indebida; es la empresa quien debe demostrar que fue licita.",
+    },
+    "R70": {
+        "title": "Transferencias intragrupo — normas internas vinculantes",
+        "use": "Las transferencias entre sociedades controladoras, subsidiarias o afiliadas bajo control comun pueden realizarse si existen normas internas de proteccion de datos cuya observancia sea VINCULANTE y cumplan con la Ley y el Reglamento. La mera pertenencia al mismo grupo corporativo NO justifica la transferencia automatica; debe existir normativa interna exigible.",
+    },
+    "R74": {
+        "title": "Transferencias internacionales — mismas obligaciones que el transferente",
+        "use": "Las transferencias internacionales solo son posibles cuando el receptor asume las MISMAS obligaciones que corresponden al responsable que transfirio. No basta con que el pais receptor tenga 'nivel adecuado'; el receptor concreto debe comprometerse contractualmente al mismo nivel de proteccion.",
+    },
+    "R87": {
+        "title": "Independencia de derechos ARCO",
+        "use": "El ejercicio de cualquiera de los derechos ARCO no excluye la posibilidad de ejercer algun otro, ni la posibilidad de ejercer un derecho constituye requisito para el ejercicio de otro. La empresa no puede condicionar la oposicion a que primero se ejerza el acceso, ni viceversa.",
+    },
+    "R91": {
+        "title": "Canales de atencion al cliente como canal ARCO valido",
+        "use": "Cuando el responsable disponga de servicios de atencion al publico o reclamaciones, podra atender las solicitudes ARCO a traves de dichos servicios, siempre que los plazos no contravengan los legales. La identidad del titular se considerara acreditada por los medios establecidos por el responsable para la identificacion en la prestacion de sus servicios. ESTO DESTRUYE EL ARGUMENTO DE 'USE NUESTRO FORMATO ESPECIFICO': los canales existentes de atencion al cliente son juridicamente validos para recibir solicitudes ARCO.",
+    },
+    "R86": {
+        "title": "Registro obligatorio de esquemas de autorregulacion",
+        "use": "Los esquemas de autorregulacion notificados forman parte de un registro administrado por la autoridad. Solo los esquemas que cumplan con los parametros legales y esten REGISTRADOS tienen efectos juridicos. Si una empresa alega tener un esquema de autorregulacion pero no esta registrado o no cumple los parametros, NO tiene valor juridico para limitar derechos ARCO.",
+    },
+}
 
 
 VALID_RIGHTS = set(RIGHTS)
