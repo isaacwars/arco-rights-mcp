@@ -1,0 +1,22 @@
+# Sensitive
+solicitud_arco_telcel.md
+11.pdf
+papers/
+auditoria/
+
+# HTML decretos (fuente de extracción, no se cargan en runtime)
+*.html
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Virtual env
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

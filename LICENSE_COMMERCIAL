@@ -1,0 +1,31 @@
+# Licencia Comercial — ARCO MCP
+
+El código fuente de ARCO MCP se distribuye bajo la Licencia Pública
+General Affero de GNU (AGPLv3). Esta licencia permite usar, modificar y
+distribuir el software gratuitamente para fines personales, académicos
+y sin fines de lucro, con la obligación de mantener el código abierto.
+
+Si deseas usar este software con fines comerciales SIN publicar tu
+código fuente (por ejemplo: integrarlo en un SaaS, vender servicios
+basados en él, distribuirlo como parte de un producto comercial o
+usarlo internamente en un despacho jurídico con modificaciones
+privativas), necesitas una licencia comercial.
+
+## Cómo solicitar una licencia comercial
+
+1. Abre un issue en: https://github.com/isaacwars/arco-rights-mcp/issues
+2. Título: "Licencia Comercial"
+3. Describe tu caso de uso y deja un medio de contacto
+4. Te responderé con los términos y condiciones
+
+## Qué incluye la licencia comercial
+
+- Derecho a modificar el código sin obligación de publicar los cambios
+- Derecho a integrarlo en productos o servicios comerciales
+- Derecho a ofrecerlo como SaaS con código cerrado
+- Soporte prioritario
+
+El uso académico, personal, altruista y sin fines de lucro sigue siendo
+gratuito bajo los términos de AGPLv3. No necesitas licencia comercial
+para usar ARCO MCP con fines de investigación, enseñanza o para ejercer
+tus propios derechos ARCO.

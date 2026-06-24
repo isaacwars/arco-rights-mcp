@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arco-rights-mcp"
+version = "0.2.0"
+authors = [{ name = "isaacwars" }]
+description = "MCP server anti-alucinación para redacción de derechos ARCO bajo la LFPDPPP 2025. Valida, redacta, audita y valora solicitudes ARCO contra cualquier empresa privada en México."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "LICENSE_COMMERCIAL"]
+keywords = ["mcp", "arco", "lfpdppp", "privacidad", "mexico", "datos-personales", "derechos-arco", "redaccion-juridica", "anti-alucinacion"]
+dependencies = []
+
+[project.optional-dependencies]
+fastmcp = ["mcp>=1.2.0"]
+
+[project.scripts]
+arco-mcp = "arco_mcp.server:main"
+arco-cli = "arco_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arco_mcp"]
