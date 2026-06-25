@@ -12,6 +12,8 @@ from arco_mcp.engine import (
     legal_graph, semantic_search, community_detail,
     # Counter defenses
     counter_defenses, CORPORATE_EVASION_TACTICS,
+    # Writing rules
+    WRITING_RULES,
 )
 from arco_mcp.law import ARTICLES, REGULATION_ARTICLES
 
@@ -95,8 +97,8 @@ class EngineTest(unittest.TestCase):
 class GraphRAGCommunitiesTest(unittest.TestCase):
     """Structural integrity of communities."""
 
-    def test_all_11_communities_exist(self):
-        self.assertEqual(len(_COMMUNITIES), 11)
+    def test_all_12_communities_exist(self):
+        self.assertEqual(len(_COMMUNITIES), 12)
 
     def test_every_community_has_required_keys(self):
         required = {"id", "title", "description", "nodes", "instrumentos"}
@@ -123,17 +125,18 @@ class GraphRAGCommunitiesTest(unittest.TestCase):
 
     def test_total_nodes_across_all_communities(self):
         total = sum(len(c["nodes"]) for c in _COMMUNITIES.values())
-        self.assertEqual(total, 74, f"Expected 74 total node placements, got {total}")
+        self.assertEqual(total, 90, f"Expected 90 total node placements, got {total}")
 
     def test_every_node_in_communities_is_resolvable(self):
         """Every node in communities must exist in ARTICLES, REGULATION_ARTICLES,
-        or be resolvable to CONSTITUTION/LFPA/AMPARO."""
+        WRITING_RULES, or be resolvable to CONSTITUTION/LFPA/AMPARO."""
         from arco_mcp.escalation import CONSTITUTION_ARTICLES, LFPA_ARTICLES, AMPARO_ARTICLES
         for cid, cdata in _COMMUNITIES.items():
             for node in cdata["nodes"]:
                 resolved = (
                     node in ARTICLES
                     or node in REGULATION_ARTICLES
+                    or node in WRITING_RULES
                     or (node.startswith("CPEUM-") and node.replace("CPEUM-", "") in CONSTITUTION_ARTICLES)
                     or (node.startswith("LFPA-") and node.replace("LFPA-", "") in LFPA_ARTICLES)
                     or (node.startswith("LA-") and node.replace("LA-", "") in AMPARO_ARTICLES)
@@ -151,7 +154,7 @@ class GraphRAGCommunitiesTest(unittest.TestCase):
                                f"Community {cid} has too short description")
 
     def test_instrumentos_field_is_valid(self):
-        valid = {"LFPDPPP 2025", "Reglamento LFPDPPP 2011", "CPEUM", "LFPA", "Ley de Amparo"}
+        valid = {"LFPDPPP 2025", "Reglamento LFPDPPP 2011", "CPEUM", "LFPA", "Ley de Amparo", "Guia de Redaccion"}
         for cid, cdata in _COMMUNITIES.items():
             for inst in cdata["instrumentos"]:
                 self.assertIn(inst, valid,
@@ -374,7 +377,7 @@ class CommunityDetailTest(unittest.TestCase):
         self.assertIn("LFPDPPP 2025", cd["instrumentos"])
         self.assertIn("CPEUM", cd["instrumentos"])
 
-    def test_all_11_communities_return_ok(self):
+    def test_all_12_communities_return_ok(self):
         for cid in _COMMUNITIES:
             cd = community_detail(cid)
             self.assertTrue(cd["ok"], f"Community {cid} failed: {cd.get('error', '')}")

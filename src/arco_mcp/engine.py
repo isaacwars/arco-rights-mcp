@@ -227,6 +227,15 @@ LEGAL_GRAPH: dict[str, list[dict[str, str]]] = {
     "18": [  # Medidas de seguridad
         {"target": "8", "type": "requires", "reason": "Los datos sensibles del art. 8 requieren medidas de seguridad reforzadas"},
         {"target": "58", "type": "complements", "reason": "La falta de medidas de seguridad adecuadas constituye infraccion"},
+        {"target": "19", "type": "complements", "reason": "Las medidas de seguridad del art. 18 son presupuesto para el deber de comunicar vulneraciones del art. 19"},
+    ],
+    "19": [  # Vulneraciones de seguridad
+        {"target": "18", "type": "requires", "reason": "La vulneracion del art. 19 solo existe si se incumplieron las medidas del art. 18"},
+        {"target": "20", "type": "complements", "reason": "La comunicacion de vulneraciones (art. 19) debe hacerse respetando el deber de confidencialidad (art. 20)"},
+    ],
+    "20": [  # Confidencialidad
+        {"target": "18", "type": "requires", "reason": "La confidencialidad del art. 20 es parte de las medidas de seguridad del art. 18"},
+        {"target": "58", "type": "complements", "reason": "La violacion del deber de confidencialidad constituye infraccion"},
     ],
     "27": [  # ARCO via representante
         {"target": "28", "type": "complements", "reason": "El representante debe cumplir los mismos requisitos del art. 28 mas acreditar la representacion"},
@@ -384,6 +393,14 @@ LEGAL_GRAPH: dict[str, list[dict[str, str]]] = {
     "R91": [  # Canales de atencion como canal ARCO
         {"target": "28", "type": "complements", "reason": "Amplia los medios validos para presentar solicitudes ARCO"},
         {"target": "30", "type": "complements", "reason": "Compatible con el art. 30 sobre medios electronicos"},
+    ],
+    "R74": [  # Transferencias internacionales
+        {"target": "35", "type": "complements", "reason": "El receptor debe asumir las mismas obligaciones que el transferente"},
+        {"target": "36", "type": "complements", "reason": "Aplica a todos los supuestos de transferencia, incluso los exceptuados"},
+    ],
+    "R87": [  # Independencia de derechos ARCO
+        {"target": "21", "type": "complements", "reason": "Refuerza que un derecho no excluye ni condiciona el ejercicio de otro"},
+        {"target": "28", "type": "complements", "reason": "El titular puede ejercer varios derechos en una misma solicitud"},
     ],
 }
 
@@ -841,6 +858,10 @@ def article_bundle(article_ids: list[str] | None = None) -> dict[str, Any]:
             articles[i] = dict(AMPARO_ARTICLES[num])
             articles[i]["instrumento"] = "Ley de Amparo"
             sources.add(AMPARO_SOURCE)
+        elif i in WRITING_RULES:
+            articles[i] = dict(WRITING_RULES[i])
+            articles[i]["instrumento"] = "Guia de Redaccion"
+            sources.add("Guia de Redaccion Juridica Mexicana")
 
     return {
         "source": list(sources) if sources else [DECREE_SOURCE],
@@ -1589,7 +1610,7 @@ A LA ATENCION DEL DEPARTAMENTO DE DATOS PERSONALES DE
 {rfc_line}{domicilio_line}
 PRESENTE.
 
-Quien suscribe, {titular}, por mi propio derecho, en mi caracter de titular de los datos personales que mas adelante se detallan, senalando para oir y recibir notificaciones {medio}, comparezco formalmente con fundamento en los articulos {_format_articles(basis_ids)} de la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (en lo sucesivo, la Ley), para ejercer de manera expresa mis derechos ARCO bajo los siguientes terminos:
+Quien suscribe, {titular}, por mi propio derecho, en mi caracter de titular de los datos personales que mas adelante se detallan, senalando para oir y recibir notificaciones {medio}, comparezco formalmente con fundamento en los articulos {_format_articles(basis_ids)} de la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (en lo sucesivo, la LFPDPPP o la Ley) y su Reglamento, publicado en el Diario Oficial de la Federacion el 21 de diciembre de 2011 (en lo sucesivo, el Reglamento), para ejercer de manera expresa mis derechos ARCO bajo los siguientes terminos:
 
 La presente solicitud se formula ante el responsable legal identificado en su aviso de privacidad vigente, no ante una sucursal, modulo, punto de venta o area operativa aislada. En caso de que un area interna distinta conserve o trate los datos, solicito que esta peticion sea canalizada internamente al departamento competente sin restringir indebidamente el alcance de la solicitud.
 
@@ -1611,7 +1632,7 @@ Conforme al articulo 31 de la Ley, el responsable cuenta con un plazo de veinte 
 
 En caso de falta de respuesta, respuesta incompleta, negativa injustificada, entrega en formato incomprensible o cumplimiento defectuoso, me reservo el derecho de presentar solicitud de proteccion de datos ante la {AUTHORITY}, en terminos de los articulos 40 y 41 de la Ley, asi como de solicitar la verificacion que corresponda conforme al articulo 54 de la Ley y de acudir al juicio de amparo contra resoluciones de la Secretaria en terminos del articulo 51 de la Ley, sin perjuicio de los derechos indemnizatorios previstos en el articulo 53 de la Ley cuando procedan.
 
-Se hace constar que las conductas de incumplimiento, negligencia, dolo, tratamiento contrario a los principios de la Ley, transferencia indebida, uso ilegitimo, obstruccion de verificacion o afectacion al ejercicio de derechos ARCO pueden actualizar infracciones previstas en el articulo 58 de la Ley, sancionables conforme al articulo 59 de la Ley, segun la conducta especifica que en su caso se acredite mediante el procedimiento correspondiente.
+Se hace constar que las conductas de incumplimiento, negligencia, dolo, tratamiento contrario a los principios de la Ley, transferencia indebida, uso ilegitimo, obstruccion de verificacion o afectacion al ejercicio de derechos ARCO constituyen infracciones previstas en el articulo 58 de la Ley, sancionables conforme al articulo 59 de la Ley, segun la conducta especifica que en su caso se acredite mediante el procedimiento correspondiente.
 
 Anexos:
 
@@ -1667,6 +1688,8 @@ def audit_existing_draft(draft_text: str, case_data: dict[str, Any] | str | None
         (r"transparencia para el pueblo", "wrong_private_authority", "medium", "Para particulares, la Ley define Secretaria como Secretaria Anticorrupcion y Buen Gobierno."),
         (r"autoridad garante", "ambiguous_authority_label", "medium", "Para la LFPDPPP de particulares usa Secretaria Anticorrupcion y Buen Gobierno; evita usar 'autoridad garante' como sustituto del nombre oficial."),
         (r"\bdenunci[aeoáé]r?\b", "imprecise_procedural_term", "medium", "Para escalar el asunto usa 'solicitud de proteccion de datos' o 'procedimiento de proteccion de derechos', no 'denunciar'/'denuncia' salvo contexto penal especifico (arts. 62-64 LFPDPPP)."),
+        # Corporate form suggestion patterns
+        (r"formulario\s+[\u00fanico]{0,6}\s*(?:para|de)\s+ejercicio\s+de\s+derechos\s+arco|formulario\s+arco\s+(?:opcional|propio|interno|corporativo|de la empresa)", "corporate_form_suggestion", "high", "Sugerir el uso de un formulario corporativo debilita la solicitud. El art. 28 LFPDPPP no exige formato especifico. Recomendar el formulario de la empresa valida su estrategia de evasion."),
         # Amparo-specific patterns (Ley de Amparo 2013)
         (r"amparo directo.{0,50}secretar[ií]a", "wrong_amparo_type", "high", "Contra resoluciones de la Secretaria procede amparo indirecto (art. 107 LA), no directo."),
         (r"(?:30|treinta)\s*d[ií]as.{0,100}amparo|amparo.{0,100}(?:30|treinta)\s*d[ií]as", "wrong_amparo_deadline", "high", "El plazo para amparo contra resolucion de la Secretaria es de 15 dias, no 30. Los 30 dias son para normas autoaplicativas (art. 17 LA)."),
@@ -1813,8 +1836,60 @@ def audit_argumentation(draft_text: str) -> dict[str, Any]:
     for pattern, code, severity, message in patterns:
         if not pattern:
             continue
-        if re.search(pattern, lower, re.DOTALL):
-            findings.append({"code": code, "severity": severity, "message": message})
+        match = re.search(pattern, lower, re.DOTALL)
+        if match:
+            # Extract context: 40 chars before and after the match
+            start = max(0, match.start() - 40)
+            end = min(len(text), match.end() + 40)
+            snippet = text[start:end].replace("\n", " ").strip()
+            finding: dict[str, str] = {
+                "code": code,
+                "severity": severity,
+                "message": message,
+                "matched": match.group(0)[:80],
+                "context": f"...{snippet}...",
+            }
+            # Add fix suggestions with concrete examples
+            if code == "undefined_term":
+                finding["fix_example"] = (
+                    "Especifica que incluye y que excluye el termino.\n"
+                    "DEBIL: 'proteccion de mi privacidad'\n"
+                    "FUERTE: 'proteccion frente al tratamiento para fines "
+                    "comerciales no contratados, con exclusion de datos "
+                    "indispensables para facturacion'"
+                )
+            elif code == "weak_conditional":
+                finding["fix_example"] = (
+                    "Cambia 'pueden constituir infracciones' por "
+                    "'constituyen infracciones'."
+                )
+            elif code == "unsustainable_exaggeration":
+                finding["fix_example"] = (
+                    "Reemplaza adjetivos absolutos por hechos citables.\n"
+                    "DEBIL: 'vulneracion absoluta'\n"
+                    "FUERTE: 'tratamiento sin consentimiento para finalidades "
+                    "no informadas en el aviso (art. 15-IV)'"
+                )
+            elif code == "misplaced_burden_of_proof":
+                finding["fix_example"] = (
+                    "Invierte la carga: en lugar de 'salvo que no sean necesarios', "
+                    "usa: 'salvo que el responsable acredite, con evidencia concreta, "
+                    "que el tratamiento es indispensable para cumplir una obligacion legal especifica'."
+                )
+            elif code == "overgeneralization":
+                finding["fix_example"] = (
+                    "Reemplaza 'todo tratamiento' o 'nunca' por lenguaje que "
+                    "reconozca las excepciones legales: "
+                    "'salvo las excepciones expresamente previstas en los "
+                    "articulos 9, 25 y 36 de la Ley'."
+                )
+            elif code == "self_contradiction":
+                finding["fix_example"] = (
+                    "Si pides 'cese definitivo' no puedes poner 'salvo que' despues. "
+                    "Unifica: o es 'cese de todo tratamiento no requerido por ley' "
+                    "o es 'cese salvo obligaciones legales justificadas'."
+                )
+            findings.append(finding)
 
     # Supresión: scope_creep si la limitación es complementaria
     if any(f["code"] == "scope_creep" for f in findings):
@@ -1839,8 +1914,6 @@ def audit_argumentation(draft_text: str) -> dict[str, Any]:
         "ok": True,
         "pass": not any(f["severity"] == "high" for f in findings),
         "findings": findings,
-        "note": "Este analisis revisa VICIOS ARGUMENTATIVOS (logica, ambiguedad, carga probatoria). Para errores juridicos usa audit_draft.",
-        "must_use_tools": ["assess_case", "deadline_timeline", "escalation_basis"],
     }
 
 
@@ -1988,7 +2061,20 @@ def process_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
         draft_result = draft_arco_request(case, validation=validation)
     else:
         preview = draft_arco_request(case, validation=validation, preview=True)
-        draft_preview = preview.get("draft") if preview.get("draft") else None
+        raw = preview.get("draft") if preview.get("draft") else None
+        if raw:
+            missing_list = "\n".join(f"  • {m}" for m in validation.get("missing", [])[:15])
+            banner = (
+                "=" * 50 + "\n"
+                "||| BORRADOR PRELIMINAR - NO ENTREGABLE AL USUARIO |||\n"
+                "=" * 50 + "\n"
+                "Este NO es un documento final. Faltan campos:\n"
+                + missing_list + "\n\n"
+                "PREGUNTA al usuario. Luego revalida con process_case.\n"
+                "NO entregues este texto bajo ninguna circunstancia.\n"
+                "=" * 50 + "\n\n"
+            )
+            draft_preview = banner + raw
 
     result: dict[str, Any] = {
         "ok": True,
@@ -2015,16 +2101,27 @@ def process_case(case_data: dict[str, Any] | str) -> dict[str, Any]:
         "draft": draft_result["draft"] if draft_result else None,
         "draft_preview": draft_preview,
         "next_step": (
-            "Caso listo. AHORA DEBES ejecutar TODAS estas herramientas EN ORDEN:\n"
-            "  1. audit_draft(draft_text) → detecta errores jurídicos\n"
-            "  2. audit_argumentation(draft_text) → detecta vicios lógicos\n"
-            "  3. assess_case(case_json) → valora solidez\n"
-            "  4. deadline_timeline(fecha) → calcula plazos\n"
-            "NO entregues el borrador hasta que audit_draft y audit_argumentation devuelvan pass=true."
+            "🚨 CASO LISTO PARA REDACTAR. AHORA DEBES ejecutar TODAS estas herramientas EN ORDEN:\n"
+            "  1. counter_defenses(case_json) → genera sección DESESTIMACION DE DEFENSAS PREVISIBLES\n"
+            "  2. audit_draft(draft_text) → detecta errores jurídicos\n"
+            "  3. audit_argumentation(draft_text) → detecta vicios lógicos. NUNCA omitas.\n"
+            "  4. assess_case(case_json) → valora solidez\n"
+            "  5. deadline_timeline(fecha) → calcula plazos\n"
+            "NO entregues el borrador hasta que audit_draft y audit_argumentation devuelvan pass=true con 0 findings severity high."
             if validation["ready_to_draft"]
-            else "Caso no listo. Se genero un draft_preview con marcadores [FALTA: campo]. Completa los campos faltantes y revalida."
+            else (
+                "🚨 CASO NO LISTO. Se genero un draft_preview CON MARCADORES que debes completar.\n"
+                "NO ENTREGUES el draft_preview al usuario. Es un borrador INTERNO con huecos.\n"
+                "PREGUNTALE AL USUARIO los datos que faltan:\n" +
+                "\n".join(f"  • {m}" for m in validation["missing"][:10]) +
+                "\n\nUna vez que el usuario te de los datos, llena los campos y vuelve a llamar a process_case."
+            )
         ),
-        "must_use_tools": ["audit_draft", "audit_argumentation", "assess_case", "deadline_timeline"] if validation["ready_to_draft"] else [],
+        "must_use_tools": (
+            ["counter_defenses", "audit_draft", "audit_argumentation", "assess_case", "deadline_timeline"]
+            if validation["ready_to_draft"]
+            else ["validate_case"]
+        ),
     }
     return result
 
@@ -2229,7 +2326,7 @@ CORPORATE_EVASION_TACTICS: list[dict[str, Any]] = [
         "id": "impose_format",
         "tactica": "Exigir un formato especifico de la empresa como condicion para procesar la solicitud",
         "contra_articulos": ["art. 28", "R91"],
-        "fundamento_destructivo": "El articulo 28 de la LFPDPPP establece los requisitos minimos de contenido de una solicitud ARCO. La ley no exige ni condiciona la validez de la solicitud al uso de un formato especifico del responsable. Ademas, el articulo 91 del Reglamento establece que cuando el responsable disponga de servicios de atencion al publico, podra atender las solicitudes ARCO a traves de dichos servicios, pudiendo acreditar la identidad del titular por los mismos medios usados para la prestacion de sus servicios. La presente solicitud cumple TODOS los requisitos del articulo 28. Cualquier pretension de invalidarla por no usar un formato corporativo carece de sustento legal y constituye una obstruccion al ejercicio de un derecho.",
+        "fundamento_destructivo": "El articulo 28 de la LFPDPPP establece los requisitos minimos de contenido de una solicitud ARCO. La ley no exige ni condiciona la validez de la solicitud al uso de un formato especifico del responsable. Ademas, el articulo 91 del Reglamento establece que cuando el responsable disponga de servicios de atencion al publico, podra atender las solicitudes ARCO a traves de dichos servicios, y acreditara la identidad del titular por los mismos medios usados para la prestacion de sus servicios. La presente solicitud cumple TODOS los requisitos del articulo 28. Cualquier pretension de invalidarla por no usar un formato corporativo carece de sustento legal y constituye una obstruccion al ejercicio de un derecho.",
     },
     {
         "id": "demand_more_docs",
@@ -2241,7 +2338,7 @@ CORPORATE_EVASION_TACTICS: list[dict[str, Any]] = [
         "id": "claim_ambiguous",
         "tactica": "Alegar que la solicitud es ambigua, oscura o imprecisa para no dar tramite",
         "contra_articulos": ["art. 28-IV", "art. 28-V", "art. 33"],
-        "fundamento_destructivo": "La presente solicitud describe con claridad los datos personales involucrados y el derecho que se ejerce, cumpliendo los requisitos de las fracciones IV y V del articulo 28. Si el responsable considera que algun elemento es impreciso, debe prevenirlo dentro de los 5 dias conforme al articulo 32, no rechazar de plano. Toda negativa debe ser fundada y motivada conforme al articulo 33, identificando la causa especifica de improcedencia.",
+        "fundamento_destructivo": "La presente solicitud describe con claridad los datos personales involucrados y el derecho que se ejerce, y cumple los requisitos de las fracciones IV y V del articulo 28. Si el responsable considera que algun elemento es impreciso, debe prevenirlo dentro de los 5 dias conforme al articulo 32, no rechazar de plano. Toda negativa debe ser fundada y motivada conforme al articulo 33, e identifica la causa especifica de improcedencia.",
     },
     {
         "id": "deny_jurisdiction",
@@ -2319,7 +2416,7 @@ CORPORATE_EVASION_TACTICS: list[dict[str, Any]] = [
         "id": "consentimiento_tacito",
         "tactica": "Alegar que el titular consintio tacitamente por no haberse opuesto al aviso de privacidad o por continuar usando el servicio",
         "contra_articulos": ["art. 7", "art. 8", "art. 9", "art. 10", "R44"],
-        "fundamento_destructivo": "El articulo 8 establece que el consentimiento tacito solo es valido cuando el aviso de privacidad se pone a disposicion del titular y este no manifiesta su oposicion. Sin embargo, el articulo 7 exige consentimiento expreso y por escrito para datos patrimoniales, financieros y sensibles. El articulo 44 del Reglamento prohibe utilizar medios enganosos o fraudulentos, considerando como tal cuando exista dolo, mala fe o negligencia en la informacion proporcionada al titular. Ademas, el consentimiento tacito no puede interpretarse como una renuncia permanente e irrevocable a los derechos ARCO, que pueden ejercerse en cualquier momento. La continuacion en el uso del servicio no implica consentimiento para finalidades distintas de las estrictamente necesarias.",
+        "fundamento_destructivo": "El articulo 8 establece que el consentimiento tacito solo es valido cuando el aviso de privacidad se pone a disposicion del titular y este no manifiesta su oposicion. Sin embargo, el articulo 7 exige consentimiento expreso y por escrito para datos patrimoniales, financieros y sensibles. El articulo 44 del Reglamento prohibe utilizar medios enganosos o fraudulentos, y considera como tal cuando exista dolo, mala fe o negligencia en la informacion proporcionada al titular. Ademas, el consentimiento tacito no puede interpretarse como una renuncia permanente e irrevocable a los derechos ARCO, que pueden ejercerse en cualquier momento. La continuacion en el uso del servicio no implica consentimiento para finalidades distintas de las estrictamente necesarias.",
     },
     {
         "id": "blocks_upload_corp_domain",
@@ -2548,6 +2645,81 @@ _COMMUNITIES: dict[str, dict[str, Any]] = {
         "nodes": ["18", "19", "20"],
         "instrumentos": ["LFPDPPP 2025"],
     },
+    "c_writing": {
+        "id": "c_writing",
+        "title": "Reglas de Redaccion Juridica Mexicana",
+        "description": "Metodo CRAC, lo dicho vs lo implicado, argumento necesario, carga de la prueba, entimema, economia del lenguaje, verdad literal, voz activa, gerundio, parrafos cortos, maxima de cantidad, implicatura no cancelable, acto de habla, a contrario, a fortiori, reductio ad absurdum.",
+        "nodes": ["W_CRAC", "W_DICHO", "W_NECESARIO", "W_CARGA", "W_ENTIMEMA", "W_ECONOMIA", "W_VERDAD", "W_VOZ", "W_GERUNDIO", "W_PARRAFOS", "W_MAXIMA", "W_IMPLICATURA", "W_ACTO_HABLA", "W_CONTRARIO", "W_FORTIORI", "W_REDUCTIO"],
+        "instrumentos": ["Guia de Redaccion"],
+    },
+}
+
+# ── Writing rules knowledge base ──
+WRITING_RULES: dict[str, dict[str, str]] = {
+    "W_CRAC": {
+        "title": "Metodo CRAC",
+        "use": "Estructura cada peticion en 4 bloques: (I) Conclusion inicial — que exiges, sin preambulos. (II) Regla — cita el articulo exacto. (III) Aplicacion — conecta la regla con los hechos concretos. (IV) Conclusion final — cierra reiterando el efecto juridico.",
+    },
+    "W_DICHO": {
+        "title": "Lo dicho vs lo implicado",
+        "use": "La autoridad SOLO se pronuncia sobre lo EXPLICITAMENTE solicitado. Lo meramente implicado o sugerido NO vincula ni obliga. Cada peticion debe declarar explicitamente: el derecho, el articulo que lo fundamenta, y la consecuencia juridica que se pide.",
+    },
+    "W_NECESARIO": {
+        "title": "Argumento necesario (silogismo cerrado)",
+        "use": "Cada peticion debe ser un silogismo donde la conclusion se siga NECESARIAMENTE de las premisas. Estructura: Norma + Hecho = Conclusion. Si la conclusion no se deduce inevitablemente de la norma y los hechos, el argumento es debil y la contraparte lo destruira. Ejemplo: NO usar 'mis datos podrian usarse indebidamente'. USAR 'art. 26-I otorga oposicion por causa legitima. La empresa transfiere mis datos sin consentimiento. Por tanto, el cese es obligatorio.'",
+    },
+    "W_CARGA": {
+        "title": "Carga de la prueba",
+        "use": "Quien afirma algo, debe probarlo. NUNCA aceptes la inversion de esta regla. Si la empresa alega que el tratamiento es necesario, ELLA debe probarlo. Si alega que consentiste, ELLA debe exhibir el consentimiento. NUNCA escribas 'salvo que no sean necesarios'. ESCRIBI 'salvo que el responsable acredite, con evidencia concreta, que el tratamiento es indispensable para cumplir una obligacion legal especifica'.",
+    },
+    "W_ENTIMEMA": {
+        "title": "Entimema — no expliques lo obvio",
+        "use": "Suprime las premisas que el lector ya conoce. La empresa conoce la ley — no se la expliques, solo citala. ESCRIBI: 'El articulo 28 exige nombre, domicilio e identificacion.' NO ESCRIBAS: 'El articulo 28 de la Ley, que regula los requisitos que deben contener las solicitudes ARCO, establece que el titular debera proporcionar su nombre...'",
+    },
+    "W_ECONOMIA": {
+        "title": "Economia del lenguaje",
+        "use": "Cada oracion debe ganar terreno juridico. Si una oracion puede eliminarse sin debilitar la posicion legal, eliminala. Si una palabra no aporta precision juridica, borrala. Lo que no suma, resta.",
+    },
+    "W_VERDAD": {
+        "title": "Verdad literal",
+        "use": "Solo lo LITERALMENTE dicho obliga. Lo inferido no. Elige palabras que no puedan torcerse en tu contra. Si algo puede interpretarse de dos formas, la contraparte usara la interpretacion que te perjudica. Redacta para que tu texto solo admita UNA interpretacion: la tuya.",
+    },
+    "W_VOZ": {
+        "title": "Voz activa",
+        "use": "Usa voz activa: Sujeto → Verbo → Predicado. NO: 'El aviso fue firmado por el titular'. SI: 'El titular firmo el aviso'. La voz pasiva oculta al responsable de la accion y debilita el argumento.",
+    },
+    "W_GERUNDIO": {
+        "title": "Gerundio solo simultaneidad",
+        "use": "El gerundio SOLO es valido para acciones simultaneas. NUNCA para posterioridad ('firmando las partes' → 'y las partes firmaron') ni como adjetivo ('la ley estableciendo' → 'la ley que establece'). Reemplaza TODO gerundio por 'que + verbo conjugado' o 'y + verbo'.",
+    },
+    "W_PARRAFOS": {
+        "title": "Parrafos de 5 lineas maximo",
+        "use": "Ningun parrafo debe superar 5-6 lineas. Si lo supera, dividelo. El espacio en blanco ayuda al lector. El escrito debe entenderse leyendo solo los titulos.",
+    },
+    "W_MAXIMA": {
+        "title": "Maxima de cantidad (Grice)",
+        "use": "No des mas informacion de la necesaria, pero tampoco menos. Lo que omites puede inferirse en tu contra. Si dices 'datos de ubicacion' sin especificar 'GPS, BTS y WiFi', la empresa solo borrara lo que literalmente dijiste. Se preciso en lo que pides y en lo que excluyes.",
+    },
+    "W_IMPLICATURA": {
+        "title": "Implicatura no cancelable",
+        "use": "Palabras como 'incluso', 'ni siquiera', 'pero', 'aun' crean inferencias legales que NO puedes deshacer. 'Transferencia, incluso a afiliadas' implica que afiliadas es el caso extremo. 'Ni siquiera con consentimiento' implica que el consentimiento es el caso mas fuerte. Usa estas palabras solo si quieres ese efecto juridico.",
+    },
+    "W_ACTO_HABLA": {
+        "title": "Acto de habla (Austin/Searle)",
+        "use": "Decir es hacer en derecho. El verbo que eliges ES la accion legal. 'Exijo' es el mas fuerte (orden). 'Solicito' es neutro (peticion). 'Requiero' es intermedio (exigencia formal). 'Declaro' es constitutivo (crea estado juridico). Para derechos ARCO, 'exijo' en peticiones principales, 'solicito' en cuestiones procesales.",
+    },
+    "W_CONTRARIO": {
+        "title": "Argumento a contrario",
+        "use": "Lo que la ley NO dice tambien es ley. Si el art. 28 lista requisitos de la solicitud, cualquier requisito no listado NO es exigible. Si el art. 25 enumera excepciones taxativas a la cancelacion, cualquier excepcion no listada NO aplica. Si el art. 36 lista supuestos de transferencia sin consentimiento, cualquier supuesto no listado requiere consentimiento. Cada lista legal es cerrada — lo omitido esta prohibido.",
+    },
+    "W_FORTIORI": {
+        "title": "Argumento a fortiori (quien puede lo mas, puede lo menos)",
+        "use": "Si la ley protege datos no sensibles, con MAYOR RAZON protege datos biometricos. Si la oposicion prevalece frente a transferencias a terceros, con MAYOR RAZON frente a afiliadas. Si la ley exige consentimiento expreso para datos financieros, con MAYOR RAZON para datos de salud. Si el art. 25 no permite conservar datos para marketing, con MAYOR RAZON no permite conservarlos para venta a terceros. Formula: 'Si [caso debil] esta protegido/prohibido, entonces [caso fuerte] tambien lo esta.'",
+    },
+    "W_REDUCTIO": {
+        "title": "Reductio ad absurdum",
+        "use": "Si la posicion de la empresa lleva a una conclusion absurda, la posicion es falsa. Estructura: (1) Asume momentaneamente la posicion de la empresa. (2) Desarrolla sus consecuencias logicas. (3) Muestra que llevan a un resultado absurdo o contrario al orden publico. (4) Concluye que la posicion es insostenible. Ej: 'Si cada empresa pudiera exigir su propio formato, el derecho ARCO seria letra muerta. El legislador no pudo haber querido que un derecho constitucional dependa de un formulario corporativo.'",
+    },
 }
 
 # Compute cross-community edges for relevance scoring
@@ -2561,6 +2733,8 @@ def _build_community_graph() -> dict[str, dict[str, int]]:
     cross: dict[str, dict[str, int]] = {cid: {} for cid in _COMMUNITIES}
     for src_cid in _COMMUNITIES:
         for src_node in _COMMUNITIES[src_cid]["nodes"]:
+            if src_node.startswith("W_"):
+                continue  # Writing rules don't have graph relationships
             if src_node not in LEGAL_GRAPH:
                 continue
             for rel in LEGAL_GRAPH[src_node]:
@@ -2584,6 +2758,8 @@ def _community_summary(cid: str) -> str:
     internal = 0
     external: dict[str, int] = {}
     for node in cdata["nodes"]:
+        if node.startswith("W_"):
+            continue  # Writing rules don't have graph relationships
         if node not in LEGAL_GRAPH:
             continue
         for rel in LEGAL_GRAPH[node]:
@@ -2607,6 +2783,8 @@ def _community_summary(cid: str) -> str:
             titles.append(f"art. {node} ({ARTICLES[node]['title']})")
         elif node in REGULATION_ARTICLES:
             titles.append(f"{node} ({REGULATION_ARTICLES[node]['title']})")
+        elif node in WRITING_RULES:
+            titles.append(f"{node} ({WRITING_RULES[node]['title']})")
 
     summary = (
         f"COMUNIDAD: {cdata['title']}\n"
@@ -2654,6 +2832,20 @@ def semantic_search(query: str) -> dict[str, Any]:
         "secretaria": ["secretaria", "anticorrupcion", "autoridad", "gobierno", "proteccion", "denuncia", "denunciar", "queja"],
         "afiliadas": ["afiliada", "afiliadas", "subsidiaria", "subsidiarias", "filial", "grupo", "controladora", "matriz"],
         "finalidades": ["finalidad", "finalidades", "proposito", "propositos", "uso", "usos", "fines"],
+        # Writing rules
+        "redaccion": ["redactar", "redaccion", "escribir", "escritura", "estilo", "narrativa", "estructura"],
+        "crac": ["crac", "conclusion", "regla", "aplicacion", "silogismo", "metodo", "bloques"],
+        "gerundio": ["gerundio", "gerundios", "ando", "iendo", "gerundismo"],
+        "carga_prueba": ["carga", "prueba", "probar", "demostrar", "acreditar", "evidencia", "onus"],
+        "entimema": ["entimema", "obvio", "sobrentendido", "implicito", "tacito", "abreviado", "suprimir"],
+        "economia": ["economia", "breve", "conciso", "redundante", "sobra", "innecesario", "eliminar"],
+        "voz_activa": ["voz", "activa", "pasiva", "sujeto", "verbo", "predicado"],
+        "maxima_cantidad": ["maxima", "cantidad", "grice", "omision", "omitir", "omite", "implicito", "no dicho"],
+        "implicatura": ["implicatura", "cancelable", "incluso", "ni siquiera", "pero", "aun", "separabilidad"],
+        "acto_habla": ["acto", "habla", "austin", "searle", "exijo", "solicito", "requiero", "declaro", "performative", "realizativo"],
+        "contrario": ["contrario", "taxativo", "taxativa", "cerrado", "lista cerrada", "omitido", "no listado", "no esta en la lista"],
+        "fortiori": ["fortiori", "mayor razon", "quien puede lo mas", "con mayor razon", "menos", "mas razon"],
+        "reductio": ["absurdo", "reductio", "absurdum", "absurda", "absurdas", "lleva a", "consecuencia absurda", "insostenible"],
     }
     expanded_tokens: set[str] = set(tokens)
     for token in list(tokens):
@@ -2717,6 +2909,15 @@ def semantic_search(query: str) -> dict[str, Any]:
                 if node_weight > 0:
                     article_matches.append(node)
                     score += node_weight
+            elif node in WRITING_RULES:
+                w_text = _strip(WRITING_RULES[node]["title"] + " " + WRITING_RULES[node]["use"])
+                node_weight = 0.0
+                for token in tokens:
+                    if token in w_text:
+                        node_weight += 2.0 * _token_weights.get(token, 1.0)
+                if node_weight > 0:
+                    article_matches.append(node)
+                    score += node_weight
 
         # Match against relationship reasons (cross-community context)
         for node in cdata["nodes"]:
@@ -2749,6 +2950,11 @@ def semantic_search(query: str) -> dict[str, Any]:
                 reg_text = _strip(REGULATION_ARTICLES[node]["title"] + " " + REGULATION_ARTICLES[node]["use"])
                 for token in tokens:
                     if token in reg_text:
+                        match_score += 1.0
+            elif node in WRITING_RULES:
+                w_text = _strip(WRITING_RULES[node]["title"] + " " + WRITING_RULES[node]["use"])
+                for token in tokens:
+                    if token in w_text:
                         match_score += 1.0
             if match_score > 0:
                 best_articles.append(node)
@@ -2821,6 +3027,11 @@ def community_detail(community_id: str) -> dict[str, Any]:
 
     # Get article texts for all nodes
     bundle = article_bundle(nodes)
+    # Inject WRITING_RULES for communities that use them
+    for node in nodes:
+        if node in WRITING_RULES:
+            bundle["articles"][node] = dict(WRITING_RULES[node])
+            bundle["articles"][node]["instrumento"] = "Guia de Redaccion"
 
     # Generate summary
     summary = _community_summary(community_id)

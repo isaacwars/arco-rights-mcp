@@ -37,45 +37,24 @@ from .law import EXTERNAL_LEGAL_TECH_LEARNINGS, RECENT_ARCO_REFERENCE_NOTES, REG
 from . import __version__
 
 
-SYSTEM_PROMPT = """ARCO MCP v0.3.0 — Semantic Graph RAG + 5 instrumentos legales.
+SYSTEM_PROMPT = """ARCO MCP arco-rights v0.3. Carga arco://case/example y arco://writing/style antes de usar tools. Si process_case devuelve ready_to_draft=false, PREGUNTA al usuario — NO entregues draft_preview.
 
-AUTORIDAD: Secretaria Anticorrupcion y Buen Gobierno (NO INAI).
-LEY VIGENTE: LFPDPPP decreto 20-mar-2025. La ley de 2010 fue ABROGADA.
+Todo texto que produzcas DEBE cumplir estas reglas. No son sugerencias. Son requisitos. El audit_argumentation rechazara el texto si las violas.
 
-ARQUITECTURA — 3 capas:
-
-  CAPA 1 — BUSQUEDA SEMANTICA (GraphRAG):
-    semantic_search("tu pregunta en lenguaje natural")
-      → encuentra las comunidades juridicas relevantes
-    community_detail("c_transfers")
-      → todos los articulos de esa comunidad con texto completo
-    legal_graph(["26","36"])
-      → como interactuan los articulos: requires, limits, overrides...
-
-  CAPA 2 — CONTENIDO LEGAL:
-    law_articles(["28","31","36"])  → texto completo de articulos
-    counter_defenses(case_json)     → arsenal anti-evasion corporativa
-    escalation_basis(etapa)         → fundamento para Secretaria o Amparo
-
-  CAPA 3 — REDACCION Y AUDITORIA:
-    process_case(case_json)  → pipeline completo: valida + redacta + audita
-    audit_draft()            → errores juridicos (24 patrones)
-    audit_argumentation()    → vicios logicos (14 patrones)
-    assess_case()            → solidez juridica
-    deadline_timeline()      → plazos en dias habiles
-
-FLUJO OBLIGATORIO:
-  1. semantic_search(pregunta) para orientarte
-  2. process_case(case_json) para pipeline completo
-  3. counter_defenses(case_json) para seccion DESESTIMACION DE DEFENSAS
-  4. audit_draft → 0 findings high = listo
-  5. audit_argumentation → NUNCA omitas
-  6. assess_case → nivel "solido" o superior
-  7. deadline_timeline → plazos exactos
-
-CARGA AL INICIO: arco://workflow/pipeline, arco://law/counter_defenses, arco://case/example
-
-REGLAS: Cada peticion cita su articulo exacto. El derecho ARCO se EXIGE, no se pide. Si must_use_tools aparece, EJECUTALO. NUNCA cites INAI. Empresa no puede exigir formato propio (art. 28). Plazo 20 dias HABILES (art. 31). Oposicion expres PREVALECE sobre transferencia afiliadas (art. 26 vs 36-III)."""
+1. CRAC: Conclusión → Regla (articulo exacto) → Aplicación (hechos) → Conclusión. 4 bloques por peticion.
+2. LO DICHO vs LO IMPLICADO: Solo lo explicito obliga. Cada peticion DEBE declarar derecho, articulo y consecuencia. Nada sugerido.
+3. ARGUMENTO NECESARIO: Norma + Hecho = Conclusión. Si la conclusion no se sigue NECESARIAMENTE, es debil.
+4. CARGA DE LA PRUEBA: Quien alega, prueba. NUNCA "salvo que no sean" — siempre "salvo que el responsable acredite".
+5. PARRAFOS 5 LINEAS MAX. Voz activa (sujeto → verbo → predicado). Gerundio SOLO simultaneidad.
+6. ENTIMEMA: No expliques la ley a la empresa. Solo citala. "Art. 28 exige X" — nunca "El art. 28, que regula los requisitos..."
+7. ECONOMIA: Si una oracion no avanza el argumento, BORRALA. Cada palabra gana terreno juridico.
+8. VERDAD LITERAL: Solo lo literal obliga. Si admite dos interpretaciones, la contraparte usara la que te perjudica.
+9. MAXIMA DE CANTIDAD: No des info de mas, pero tampoco de menos. Lo que OMITES puede inferirse en tu contra. Si dices "datos de ubicacion" sin especificar "GPS, BTS y WiFi", la empresa borrara solo lo que le convenga.
+10. IMPLICATURA NO CANCELABLE: "Incluso", "ni siquiera", "pero" crean inferencias legales que NO puedes deshacer. "Transferencia, incluso a afiliadas" implica que afiliadas es el caso extremo. Usalas solo si buscas ese efecto.
+11. ACTO DE HABLA: "Exijo" ≠ "Solicito" ≠ "Requiero". El verbo ES la accion legal. "Exijo" es el mas fuerte. "Solicito" es neutro. Para derechos ARCO, usa "exijo" en las peticiones principales.
+12. A CONTRARIO: Lo que la ley NO dice tambien es ley. El art. 28 lista los requisitos de la solicitud — si un requisito no esta en esa lista, NO es exigible. Cada excepcion del art. 25 es taxativa — si el caso de la empresa no encaja en una fraccion especifica, la excepcion NO aplica.
+13. A FORTIORI: "Quien puede lo mas, puede lo menos." Si la ley protege datos no sensibles, con mayor razon protege datos biometricos. Si la oposicion prevalece frente a transferencias a terceros, con mayor razon frente a afiliadas.
+14. REDUCTIO AD ABSURDUM: Si la posicion de la empresa lleva a una conclusion absurda, la posicion es falsa. "Si cada empresa pudiera exigir su formato, el derecho ARCO seria letra muerta. El legislador no pudo haber querido ese resultado."""
 
 
 CHECKLIST = {
@@ -132,31 +111,24 @@ EXTERNAL_RESEARCH = {
 
 PIPELINE = """PIPELINE ARCO — OBLIGATORIO seguir este orden. NO omitas herramientas.
 
-1. Carga arco://case/example para ver la estructura JSON exacta.
-2. Carga arco://law/counter_defenses para conocer el arsenal anti-evasion.
-3. process_case(case_json) → pipeline completo en una llamada.
-4. counter_defenses(case_json) → identifica las defensas que la empresa podria usar y sus contra-articulos. USA ESTA INFORMACION para redactar la seccion 'DESESTIMACION DE DEFENSAS PREVISIBLES' del borrador.
-5. audit_draft(draft_text) → detecta errores jurídicos.
-6. audit_argumentation(draft_text) → detecta vicios lógicos. NUNCA omitas este paso.
-7. assess_case(case_json) → valora solidez jurídica. Siempre despues de los audits.
-8. deadline_timeline(fecha_recepcion) → calcula plazos. Agrega fecha_notificacion_secretaria si aplica.
-9. escalation_basis(etapa="amparo") → fundamento completo para amparo.
+1. Carga arco://case/example para la estructura JSON exacta.
+2. Carga arco://law/counter_defenses para el arsenal anti-evasion.
+3. process_case(case_json) → pipeline completo.
+4. counter_defenses(case_json) → genera la seccion DESESTIMACION DE DEFENSAS PREVISIBLES.
+5. audit_draft(draft_text) → errores juridicos. NUNCA omitas.
+6. audit_argumentation(draft_text) → vicios logicos. NUNCA omitas.
+7. assess_case(case_json) → solidez juridica.
+8. deadline_timeline(fecha) → plazos.
+9. escalation_basis(etapa="amparo") → fundamento para amparo.
 
 EL BORRADOR NO ESTA LISTO hasta que:
-- Incluye la seccion 'DESESTIMACION DE DEFENSAS PREVISIBLES' con contra-argumentos especificos
-- audit_draft devuelva pass=true con 0 findings de severity high
-- audit_argumentation devuelva pass=true con 0 findings de severity high
-- assess_case devuelva nivel "solido" o superior
+- Incluye DESESTIMACION DE DEFENSAS PREVISIBLES.
+- audit_draft devuelva pass=true con 0 findings severity high.
+- audit_argumentation devuelva pass=true con 0 findings severity high.
 
-Si falta aunque sea UNO de estos pasos, NO entregues el borrador. Vuelve a iterar.
+TONO: Se exige con fundamento legal, no se "solicita amablemente". Firme, directo. Sin eufemismos.
 
-TONO: El derecho ARCO es un derecho constitucional (art. 16 CPEUM). No se "solicita amablemente" — se exige con fundamento legal. La ley esta del lado del titular. Cada peticion debe ser firme, directa y respaldada por el articulo exacto. Sin eufemismos. Sin "por favor". Sin "si no es mucha molestia". Esto es la exigencia de un derecho, no una carta de solicitud de empleo.
-
-CONTRADEFENSAS: CADA empresa tiene su propia marana de avisos de privacidad. La herramienta counter_defenses devuelve las tacticas de evasion mas probables y sus contra-articulos. DEBES generar UN PARRAFO POR DEFENSA en la seccion DESESTIMACION DE DEFENSAS PREVISIBLES. Cada parrafo: (1) nombra la defensa, (2) cita el articulo exacto que la destruye, (3) explica por que es improcedente. Se especifico y quirurgico. El objetivo es que el abogado de la empresa sepa que NO TIENE ESCAPATORIA.
-
-Reglas: si hay placeholders, NO redactes. Si salud/biometria sin sensible=true, BLOQUEA.
-Si oposicion sin dano concreto, BLOQUEA. Si >180d sin aviso reconsultado, ADVIERTE.
-Nunca cites INAI/IFAI/PRODATOS. Usa Secretaria Anticorrupcion y Buen Gobierno."""
+Reglas: placeholders → NO redactes. Salud/biometria sin sensible=true → BLOQUEA. Oposicion sin dano concreto → BLOQUEA. >180d sin aviso reconsultado → ADVIERTE. NUNCA cites INAI/IFAI/PRODATOS."""
 
 CASE_EXAMPLE = """ESTRUCTURA DEL JSON DE CASO — usa estos nombres EXACTOS de campo.
 
@@ -218,158 +190,105 @@ IMPORTANTE:
 - Si ejerces oposicion, agrega: causa_legitima_oposicion, situacion_especifica_oposicion, dano_o_perjuicio_oposicion
 """
 
-STYLE_GUIDE = """GUÍA DE REDACCIÓN JURÍDICA MEXICANA — ESTILO ÉLITE
+STYLE_GUIDE = """GUIA DE REDACCION JURIDICA MEXICANA
 
-Fundamento académico: Graciela Fernández Ruiz, "Argumentación y Lenguaje
-Jurídico. Aplicación al análisis de una sentencia de la SCJN", 2ª ed.,
-UNAM-IIJ, México, 2017 (ISBN 978-607-02-9678-9). La autora distingue:
-- Justificación interna: la conclusión debe seguirse lógicamente de las premisas
-  (silogismo jurídico: norma + hecho = conclusión).
-- Justificación externa: demostrar la corrección de las premisas mediante formas
-  de argumento (analogía, a fortiori, a contrario).
-El método CRAC es la aplicación práctica de esta dualidad.
+Usa esta guia para refinar borradores ARCO despues de audit_draft.
 
-Respaldo adicional: Jorge F. Malem Seña, "El lenguaje de las sentencias",
-Reforma Judicial. Revista Mexicana de Justicia, IIJ-UNAM, núm. 7, 2006,
-pp. 47-60. Identifica los vicios forenses que esta guía combate: gerundios
-concatenados, pasiva con "se" agentiva, frases desmesuradamente largas,
-nominalizaciones excesivas, siglas sin expandir y copia mecánica de fórmulas
-legislativas. Las 4 reglas de oro derivan directamente de este diagnóstico.
+═══ METODO CRAC ═══
 
-Usa esta guía para refinar borradores ARCO. Aplícala después de pasar audit_draft.
+Estructura nativa SCJN. Cada peticion en 4 bloques:
 
-═══ MÉTODO CRAC (Conclusión → Regla → Aplicación → Conclusión) ═══
+  I. CONCLUSION INICIAL (Tesis). Primera linea: que exiges. Sin preambulos.
+     Ej: "Exijo la cancelacion de mis datos no requeridos por ley."
 
-CRAC no es un método anglosajón adaptado. Es la estructura NATIVA del
-razonamiento judicial mexicano. La SCJN la ha usado por décadas en sus
-sentencias (Fernández Ruiz documenta su aplicación desde al menos 2006
-en el Amparo en Revisión 02352/1997-00). Las firmas corporativas solo le
-pusieron nombre comercial. La estructura SCJN es:
+  II. REGLA (Fundamento). Cita el articulo exacto.
+     Ej: "El articulo 24 de la Ley establece el derecho de cancelacion."
 
-  Resultandos → hechos del caso
-  Considerandos → cada uno contiene: [C] tesis + [R] norma + [A] subsunción
-  Resolutivos → [C] conclusión final: se concede/niega
+  III. APLICACION (Subsuncion). Conecta la regla con los hechos concretos.
+     Ej: "El responsable trata mis datos de geolocalizacion, los cuales no son
+     necesarios para proveer el servicio de telefonia contratado."
 
-Estructura cada petición o sección del escrito en 4 bloques:
+  IV. CONCLUSION FINAL (Peticion). Cierra reiterando el efecto juridico.
+     Ej: "Por tanto, exijo el bloqueo y supresion de dichos datos."
 
-  I. CONCLUSIÓN INICIAL (Tesis). Primera línea: qué vas a demostrar o qué exiges.
-     Sin preámbulos. Ej: "La cancelación es improcedente por obligación legal."
+═══ LO DICHO vs LO IMPLICADO ═══
 
-  II. REGLA (Fundamento). Cita el artículo exacto y transcribe solo lo esencial.
-     Ej: "El artículo 26, fracción V, de la Ley establece que no procede cancelar
-     cuando el tratamiento sea necesario para cumplir una obligación legal."
+La autoridad SOLO se pronuncia sobre lo EXPLICITO. Lo implicado no vincula.
+Cada peticion debe declarar explicitamente: el derecho, el articulo, y la consecuencia.
 
-  III. APLICACIÓN (Subsunción). Conecta la regla con los hechos concretos.
-     Ej: "En el presente caso, el solicitante fue cliente de esta institución
-     financiera. El artículo 115 de la Ley de Instituciones de Crédito obliga
-     a conservar el expediente por 10 años."
-
-  IV. CONCLUSIÓN FINAL (Petición concreta). Cierra reiterando el efecto jurídico.
-     Ej: "Por tanto, solicito se declare justificada la negativa de cancelación."
-
-═══ REGLA DE ORO 0: LO DICHO vs LO IMPLICADO ═══
-
-Basado en Paul Grice (Studies in the Way of Words, 1989), analizado por
-Fernández Ruiz (2017, Cap. VI). En el discurso jurídico mexicano, el juez
-o autoridad SÓLO puede pronunciarse sobre lo EXPLÍCITAMENTE solicitado.
-Lo meramente implicado o sugerido NO vincula ni obliga a la autoridad.
-
-En cada petición del escrito, verifica:
-- ¿Está EXPLÍCITA la petición concreta? (no basta sugerirla)
-- ¿Está EXPLÍCITO el artículo que la fundamenta? (no basta mencionarlo de paso)
-- ¿Está EXPLÍCITA la consecuencia jurídica que se pide? (no basta describir el problema)
-
-Ejemplo de lo DICHO vs lo IMPLICADO en una solicitud ARCO:
-  IMPLICADO (débil): "Me preocupa el uso de mis datos para mercadotecnia."
-  DICHO (fuerte):   "Solicito el cese del tratamiento de mis datos para
-                     finalidades de mercadotecnia, con fundamento en el
-                     artículo 26, fracción I, de la Ley."
+DEBIL: "Me preocupa el uso de mis datos para mercadotecnia."
+FUERTE: "Solicito el cese del tratamiento de mis datos para fines de mercadotecnia,
+con fundamento en el articulo 26, fraccion I, de la Ley."
 
 ═══ 4 REGLAS DE ORO ═══
 
-1. PÁRRAFOS DE 5 LÍNEAS MÁXIMO.
-   Si un párrafo supera 5-6 líneas, divídelo. El espacio en blanco ayuda al lector.
+1. PARRAFOS DE 5 LINEAS MAXIMO.
 
 2. VOZ ACTIVA (Sujeto → Verbo → Predicado).
-   ❌ "El aviso de privacidad fue firmado por el titular."
-   ✅ "El titular firmó el aviso de privacidad."
 
-3. GERUNDIO: SOLO SIMULTANEIDAD. NUNCA POSTERIORIDAD NI ADJETIVAL.
-   El gerundio (-ando, -iendo) es el vicio forense más común y peligroso
-   (Malem Seña dedica un apartado entero a documentarlo). Hay 4 tipos:
+3. GERUNDIO SOLO SIMULTANEIDAD. Reemplaza TODO gerundio por "que + verbo" o "y + verbo".
 
-   ✅ SIMULTANEIDAD (válido): acción ocurre AL MISMO TIEMPO que el verbo principal.
-      "El titular firmó el aviso aceptando los términos."
-      "Comparezco señalando como medio para notificaciones el correo."
-      Riesgo legal: NINGUNO. Es el único uso correcto.
+4. ECONOMIA: SUPRIME LO REDUNDANTE.
+   Si el lector ya conoce la premisa, no la expliques.
+   Cada oracion debe ganar terreno juridico. Si no avanza el argumento, borrala.
 
-   ❌ POSTERIORIDAD (nulidad procesal): acción ocurre DESPUÉS del verbo principal.
-      "Se celebró el contrato, firmando las partes al calce."
-      Riesgo legal: AMBIGÜEDAD TEMPORAL. ¿Firmaron mientras se celebraba o después?
-      La contraparte puede alegar error en la secuencia de hechos → anulable.
+5. ENTIMEMA: NO EXPLIQUES LO OBVIO.
+   La empresa conoce la ley. No se la expliques. Solo citala.
+   "El articulo 28 exige nombre, domicilio y documentos de identidad."
+   No digas: "El articulo 28 de la ley, que regula los requisitos de las
+   solicitudes ARCO, establece que el titular debe proporcionar..."
 
-   ❌ ADJETIVAL (sin fuerza normativa): gerundio usado como adjetivo calificativo.
-      "La ley estableciendo los derechos" en vez de "la ley que establece".
-      "El decreto reformando el artículo 31" en vez de "el decreto que reforma".
-      Riesgo legal: El gerundio NO tiene fuerza declarativa en español jurídico.
-      Un juez puede interpretarlo como NO VINCULANTE. Lo que está en gerundio
-      no obliga; solo lo que está en indicativo o imperativo tiene fuerza legal.
+═══ VERDAD LITERAL ═══
 
-   ❌ GERUNDIO DEL BOE/DOF (arcaísmo administrativo): heredado de la admin pública.
-      "El oficio de fecha 23 de junio, reformando el acuerdo anterior."
-      Riesgo legal: Aunque es ubicuo en oficios, es impreciso y debilita el texto.
+Solo lo LITERALMENTE dicho obliga. Lo inferido no.
+Elige palabras que no puedan torcerse en tu contra.
 
-   REGLA PRÁCTICA: Reemplaza TODO gerundio por "que + verbo conjugado" o "y + verbo".
-   ❌ "Decreto reformando la ley"  →  ✅ "Decreto que reforma la ley"
-   ❌ "firmando las partes"         →  ✅ "y las partes firmaron"
-   ❌ "El oficio estableciendo"     →  ✅ "El oficio que establece"
+═══ CARGA DE LA PRUEBA ═══
 
-4. SUBTÍTULOS COMO MAPA DE NAVEGACIÓN.
-   El escrito debe entenderse leyendo solo los títulos en negritas.
-   Usa encabezados contundentes: "I. Improcedencia de la cancelación",
-   "II. Cumplimiento del principio de proporcionalidad".
+Quien afirma algo, debe probarlo. NO aceptes la inversion de esta regla.
+Si la empresa alega que el tratamiento es "necesario", ELLA debe probarlo.
+Si la empresa alega que "consentiste", ELLA debe exhibir el consentimiento.
+NUNCA escribas "salvo que no sean necesarios" — escribi "salvo que el
+responsable acredite, con evidencia, que son indispensables".
 
-═══ EJEMPLO: ANTES vs DESPUÉS ═══
+═══ ARGUMENTO NECESARIO (no persuasivo) ═══
 
-ESTILO TRADICIONAL (débil):
-"Que por medio del presente ocurso y resultando a todas luces infundado
-el dicho del solicitante, toda vez que resulta menester precisar que mi
-representada se encuentra impedida para realizar la cancelación solicitada
-en virtud de que de conformidad con lo que a la letra reza el artículo 26
-de la LFPDPPP, existen excepciones, y en la especie, la Ley de Instituciones
-de Crédito nos obliga a guardar los datos, por lo que pido se deseche su queja."
+Cada peticion debe ser un silogismo cerrado: Norma + Hecho = Conclusion.
+Si la conclusion no se sigue NECESARIAMENTE de las premisas, no sirve.
+NO: "mis datos podrian usarse indebidamente"
+SI:  "art. 26-I otorga oposicion por causa legitima. [Hecho concreto].
+      Por tanto, el cese es obligatorio."
 
-ESTILO CRAC (élite):
-I. Improcedencia de la cancelación por obligación legal.
-Esta empresa no es omisa; la cancelación es legalmente improcedente.
-El artículo 26 de la Ley establece que no procede cancelar cuando
-el tratamiento sea necesario para cumplir una obligación legal.
-El solicitante fue cliente de esta institución financiera. El artículo 115
-de la Ley de Instituciones de Crédito obliga a conservar el expediente
-de identificación del cliente por un mínimo de 10 años.
-Dado que el plazo de 10 años no ha transcurrido, esta empresa tiene
-la obligación legal de conservar los datos. Solicito se declare
-justificada la negativa y se sobresea la queja.
+═══ ANTES vs DESPUES ═══
 
-═══ CÓMO USAR ESTA GUÍA CON EL MCP ═══
+ESTILO TRADICIONAL (debil):
+"Que por medio del presente ocurso y resultando a todas luces infundado el dicho
+del solicitante, toda vez que resulta menester precisar que mi representada se
+encuentra impedida para realizar la cancelacion solicitada..."
 
-1. Genera el borrador con process_case o draft_request.
-2. Pasa el borrador por audit_draft para detectar errores jurídicos.
-3. Corrige los errores jurídicos detectados.
-4. APLICA ESTA GUÍA para refinar el estilo (párrafos cortos, CRAC, voz activa).
-5. Vuelve a pasar por audit_draft para verificar que no introdujiste errores."""
+ESTILO CRAC (fuerte):
+I. Improcedencia de la cancelacion por obligacion legal.
+Esta empresa no es omisa; la cancelacion es legalmente improcedente.
+El articulo 26 de la Ley establece que no procede cancelar cuando el tratamiento
+sea necesario para cumplir una obligacion legal.
+El solicitante fue cliente de esta institucion financiera. El articulo 115 de la
+Ley de Instituciones de Credito obliga a conservar el expediente por 10 anos.
+Dado que el plazo de 10 anos no ha transcurrido, esta empresa tiene la obligacion
+legal de conservar los datos. Solicito se declare justificada la negativa.
+
+═══ COMO USAR ═══
+
+1. Genera el borrador con process_case.
+2. audit_draft → corrige errores juridicos.
+3. Aplica esta guia → refina estilo (parrafos, CRAC, voz activa).
+4. Vuelve a audit_draft para verificar."""
 
 COUNTER_DEFENSES_ARSENAL = {
-    "proposito": "Arsenal tactico para destruir las defensas corporativas mas comunes que las empresas usan para evadir ARCO. El LLM debe usar esta informacion para generar contra-defensas ESPECIFICAS y QUIRURGICAS en el borrador, adaptadas a la empresa concreta del caso.",
+    "proposito": "Mapeo de defensas corporativas comunes contra ARCO con sus contra-articulos. Usar para generar contra-defensas especificas en el borrador.",
     "instrucciones_para_llm": (
-        "CADA empresa tiene su propia marana de aviso de privacidad y tacticas de evasion. "
-        "Usa la herramienta counter_defenses para obtener la lista de defensas aplicables al caso concreto. "
-        "LUEGO, en la seccion 'DESESTIMACION DE DEFENSAS PREVISIBLES' del borrador, "
-        "genera UN PARRAFO POR CADA DEFENSA que: (1) nombre la defensa que la empresa podria intentar, "
-        "(2) cite el articulo EXACTO que la destruye, y (3) explique por que es juridicamente improcedente. "
-        "NO uses lenguaje generico. Se especifico, quirurgico, contundente. "
-        "El objetivo es que cuando el abogado de la empresa lea el borrador, SEPA QUE NO TIENE ESCAPATORIA LEGAL. "
-        "Cada parrafo debe cerrar con la consecuencia juridica de intentar esa defensa (infraccion, sancion, negativa infundada)."
+        "Genera UN PARRAFO POR DEFENSA en DESESTIMACION DE DEFENSAS PREVISIBLES: "
+        "(1) nombra la defensa, (2) cita el articulo que la destruye, "
+        "(3) explica por que es improcedente."
     ),
     "categorias_defensas_corporativas": [
         {
@@ -693,6 +612,42 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             },
         },
     },
+    "counter_defenses": {
+        "description": "Arsenal tactico anti-evasion corporativa. Devuelve las tacticas de evasion aplicables al caso con sus contra-articulos exactos y articulos completos. Usala ANTES de redactar la seccion DESESTIMACION DE DEFENSAS PREVISIBLES.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"case_json": {"type": "string"}},
+            "required": ["case_json"],
+        },
+    },
+    "legal_graph": {
+        "description": "Grafo de relaciones semanticas entre articulos. Dado uno o mas articulos, devuelve TODAS las relaciones juridicas (requires, limits, overrides, complements). Incluye IDs de articulos para consultar con law_articles.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"article_numbers_json": {"type": "string", "default": "[]"}},
+        },
+    },
+    "semantic_search": {
+        "description": "Busqueda semantica global sobre el grafo juridico. Dada una pregunta en lenguaje natural, encuentra las comunidades mas relevantes y los articulos especificos.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "default": ""}},
+        },
+    },
+    "community_detail": {
+        "description": "Detalle completo de una comunidad del grafo juridico con todos los articulos, relaciones internas y conexiones externas.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"community_id": {"type": "string", "default": ""}},
+        },
+    },
+    "health": {
+        "description": "Verifica que el MCP este operativo. Devuelve version, articulos, nodos del grafo y comunidades activas. Usala al inicio de cada sesion.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
 }
 
 
@@ -715,6 +670,7 @@ def _call_tool(name: str, args: dict[str, Any]) -> Any:
         "legal_graph": _legal_graph_call,
         "semantic_search": _semantic_search_call,
         "community_detail": _community_detail_call,
+        "health": _health_call,
     }
     if name not in dispatch:
         return tool_error(name, f"Tool desconocida: {name}")
@@ -815,6 +771,30 @@ def _community_detail_call(community_id: str = "") -> Any:
     return community_detail(community_id)
 
 
+def _health_call() -> Any:
+    from . import __version__
+    from .engine import LEGAL_GRAPH, _COMMUNITIES, CORPORATE_EVASION_TACTICS
+    from .law import ARTICLES, REGULATION_ARTICLES
+    return {
+        "ok": True,
+        "version": __version__,
+        "status": "healthy",
+        "legal_instruments": 5,
+        "articles_lfpdppp": len(ARTICLES),
+        "articles_regulation": len(REGULATION_ARTICLES),
+        "graph_nodes": len(LEGAL_GRAPH),
+        "graph_relationships": sum(len(v) for v in LEGAL_GRAPH.values()),
+        "communities": len(_COMMUNITIES),
+        "counter_defense_tactics": len(CORPORATE_EVASION_TACTICS),
+        "message": (
+            "El MCP esta operativo. Para empezar: "
+            "1. Carga arco://case/example para la estructura JSON. "
+            "2. Pregunta al usuario sus datos. "
+            "3. Usa validate_case antes de process_case."
+        ),
+    }
+
+
 def _json(data) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
@@ -828,67 +808,38 @@ if FastMCP is not None:
 
     @mcp.tool()
     def validate_case(case_json: str) -> str:
-        """Audita si un caso ARCO esta listo para redactarse sin huecos legales criticos.
-
-        Args:
-            case_json: JSON del caso con titular, responsable, relacion juridica,
-                datos personales, derechos solicitados y anexos.
+        """Audita si un caso ARCO esta listo para redactarse sin huecos legales criticos.                datos personales, derechos solicitados y anexos.
         """
         return _json(_validate_case_call(case_json))
 
     @mcp.tool()
     def audit_identity(case_json: str) -> str:
-        """Detecta riesgos de responsable incorrecto, nombre comercial, sucursal o canal ARCO no oficial.
-
-        Args:
-            case_json: JSON del caso o al menos objeto con responsable y relacion_juridica.
-        """
+        """Detecta riesgos de responsable incorrecto, nombre comercial, sucursal o canal ARCO no oficial.        """
         return _json(_audit_identity_call(case_json))
 
     @mcp.tool()
     def source_audit(case_json: str) -> str:
-        """Audita procedencia, fuente oficial y frescura del aviso de privacidad.
-
-        Args:
-            case_json: JSON del caso o al menos objeto con responsable.fuente_aviso_privacidad.
-        """
+        """Audita procedencia, fuente oficial y frescura del aviso de privacidad.        """
         return _json(_source_audit_call(case_json))
 
     @mcp.tool()
     def select_basis(case_json: str) -> str:
-        """Selecciona articulos aplicables sin sobrecitar ni usar articulos fuera de alcance.
-
-        Args:
-            case_json: JSON del caso.
-        """
+        """Selecciona articulos aplicables sin sobrecitar ni usar articulos fuera de alcance.        """
         return _json(_select_basis_call(case_json))
 
     @mcp.tool()
     def draft_request(case_json: str) -> str:
-        """Redacta una solicitud ARCO solo si el caso supera la validacion critica.
-
-        Args:
-            case_json: JSON del caso.
-        """
+        """Redacta una solicitud ARCO solo si el caso supera la validacion critica.        """
         return _json(_draft_request_call(case_json))
 
     @mcp.tool()
     def argument_map(case_json: str) -> str:
-        """Construye mapa de argumentos y limites legales antes de redactar.
-
-        Args:
-            case_json: JSON del caso.
-        """
+        """Construye mapa de argumentos y limites legales antes de redactar.        """
         return _json(_argument_map_call(case_json))
 
     @mcp.tool()
     def audit_draft(draft_text: str, case_json: str = "") -> str:
-        """Audita un borrador ARCO para detectar autoridad equivocada, articulos mal usados y amenazas sancionatorias imprecisas.
-
-        Args:
-            draft_text: Texto del borrador.
-            case_json: JSON opcional del caso relacionado.
-        """
+        """Audita un borrador ARCO para detectar autoridad equivocada, articulos mal usados y amenazas sancionatorias imprecisas.        """
         return _json(_audit_draft_call(draft_text, case_json))
 
     @mcp.tool()
@@ -899,33 +850,17 @@ if FastMCP is not None:
         fecha_presentacion_secretaria: str = "",
         fecha_notificacion_secretaria: str = "",
     ) -> str:
-        """Calcula plazos ARCO en dias habiles.
-
-        Args:
-            fecha_recepcion: Fecha ISO YYYY-MM-DD de recepcion por el responsable.
-            fecha_respuesta: Fecha ISO opcional de respuesta del responsable.
-            holidays_json: JSON array opcional con feriados ISO YYYY-MM-DD.
-            fecha_presentacion_secretaria: Fecha ISO opcional de solicitud de proteccion ante Secretaria.
-            fecha_notificacion_secretaria: Fecha ISO opcional de notificacion de la resolucion de la Secretaria.
-        """
+        """Calcula plazos ARCO en dias habiles."""
         return _json(_deadline_call(fecha_recepcion, fecha_respuesta, holidays_json, fecha_presentacion_secretaria, fecha_notificacion_secretaria))
 
     @mcp.tool()
     def law_articles(article_numbers_json: str = "[]") -> str:
-        """Devuelve matriz controlada de articulos de la LFPDPPP 2025.
-
-        Args:
-            article_numbers_json: JSON array opcional, por ejemplo ["21", "28", "31"].
-        """
+        """Devuelve matriz controlada de articulos de la LFPDPPP 2025.        """
         return _json(_law_articles_call(article_numbers_json))
 
     @mcp.tool()
     def escalation_basis(etapa: str = "escalamiento_secretaria") -> str:
-        """Fundamento legal completo para fase de escalamiento: LFPDPPP + LFPA + Ley de Amparo + Constitucion.
-
-        Args:
-            etapa: 'escalamiento_secretaria' incluye LFPDPPP + LFPA. 'amparo' incluye ademas Ley de Amparo + Constitucion.
-        """
+        """Fundamento legal completo para fase de escalamiento: LFPDPPP + LFPA + Ley de Amparo + Constitucion.        """
         return _json(_escalation_basis_call(etapa))
 
     @mcp.tool()
@@ -939,7 +874,7 @@ if FastMCP is not None:
     @mcp.tool()
     def assess_case(case_json: str) -> str:
         """Valoracion juridica estructurada del caso ARCO. Evalua el nivel de solidez
-        (irrefutable, solido, solido_con_reservas, incompleto, debil, insostenible),
+        
         las implicaciones legales de cada hallazgo y emite un pronostico de viabilidad.
         Usala para saber si el caso resistiria un escrutinio legal serio.
         """
@@ -991,6 +926,14 @@ if FastMCP is not None:
         comunidades. Usala despues de semantic_search para profundizar.
         """
         return _json(_community_detail_call(community_id))
+
+    @mcp.tool()
+    def health() -> str:
+        """Verifica que el MCP esta operativo y devuelve estadisticas del sistema:
+        version, numero de articulos cargados, nodos del grafo, comunidades activas.
+        Usala al INICIO de cada sesion para confirmar que todo funciona.
+        """
+        return _json(_health_call())
 
     @mcp.resource(
         "arco://prompt/system",
@@ -1067,7 +1010,7 @@ if FastMCP is not None:
     @mcp.resource(
         "arco://law/regulation",
         name="regulation_articles",
-        description="Articulos clave del Reglamento LFPDPPP 2011 con principios procesales VIGENTES contra evasion corporativa. Advertencia: referencias al INAI/Instituto deben leerse como Secretaria Anticorrupcion.",
+        description="Principios procesales VIGENTES del Reglamento LFPDPPP 2011. ADVERTENCIA: el reglamento no ha sido armonizado con el decreto 2025. Referencias al INAI/Instituto deben leerse como Secretaria Anticorrupcion. Solo los principios procesales extraidos son validos.",
         mime_type="application/json",
     )
     def resource_regulation_articles() -> str:
